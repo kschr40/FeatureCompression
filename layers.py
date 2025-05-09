@@ -18,6 +18,15 @@ class CompressionLayer(nn.Module):
         self.a = nn.Parameter(a_init)
         self.a_index = a_index
         self.tau = tau
+        self.round_quantization = False
+
+    def set_round_quantization(self, round_quantization: bool):
+        """Set the round quantization flag.
+
+        Args:
+            round_quantization (bool): Whether to round the output.
+        """
+        self.round_quantization = round_quantization    
     
     def forward(self, x, round_quantization = False):
         """ Forward pass of the compression layer.
@@ -30,7 +39,7 @@ class CompressionLayer(nn.Module):
             torch.Tensor: Compressed tensor, shape [B, num_thresholds]
         """
         y = nn.Sigmoid()((x[:,self.a_index]-self.a) / self.tau)
-        if round_quantization:
+        if round_quantization or self.round_quantization:
             y = torch.round(y)
         return y
     
@@ -91,9 +100,106 @@ class QuantizationLayer(nn.Module):
     
 
                     
+class HardQuantizationLayer(nn.Module):
+    """A layer that quantizes inputs into n_bits bits using hard thresholding."""
+    def __init__(self, n_bits: int, min_values: torch.tensor, max_values: torch.tensor):
+        """Initialize the hard quantization layer.
+        
+        Args:
+            n_bits (int): Number of bits to quantize into
+            min_values (torch.tensor): Minimum values for each feature
+            max_values (torch.tensor): Maximum values for each feature
+        """
+        super().__init__()
+        self.n_bits = n_bits
+        self.n_levels = 2**n_bits
+        self.register_buffer('min_values', min_values)
+        self.register_buffer('max_values', max_values)
+        self.register_buffer('range', max_values - min_values)
+        
+    def forward(self, x: torch.Tensor, do_quantization = True) -> torch.Tensor:
+        """Forward pass of the hard quantization layer.
+        
+        Args:
+            x (torch.Tensor): Input tensor to be quantized
+            round_quantization (bool): Unused parameter kept for compatibility
+            
+        Returns:
+            torch.Tensor: Quantized tensor with values in [0,1]
+        """
+        if do_quantization:
+            # Scale x to [0,1] based on min/max values
+            x = (x - self.min_values) / self.range
+            x = torch.clamp(x, 0, 1)
+            
+            # Quantize to n_bits
+            x = torch.round(x * (self.n_levels - 1)) / (self.n_levels - 1)
+            
+            # Scale back to original range
+            x = x * self.range + self.min_values
+        
+        return x
 
+class HardQuantizationThresholdLayer(nn.Module):
+    def __init__(self, thresholds:torch.Tensor):
+        """Initialize the hard quantization threshold layer.
+        
+        Args:
+            thresholds (torch.Tensor): Thresholds for quantization, shape [num_features, num_thresholds]
+        """
+        super().__init__()
+        self.register_buffer('thresholds', thresholds)
 
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Do hard quantization based on the thresholds.
 
+        Args:
+            x (torch.Tensor): SHape [B, num_features]
+
+        Returns:
+            torch.Tensor: Quantized tensor, shape [B, num_features]
+        """
+        x = x.unsqueeze(-1)  # Add a dimension for broadcasting
+        # Compare x with thresholds
+        x = (x > self.thresholds.unsqueeze(0)).float() ## Shape [B, num_features, num_thresholds]   
+        # Sum along the threshold dimension to get the final quantized values
+        x = torch.sum(x, dim=-1)  # Shape [B, num_features]
+        return x
+
+class HardQuantizationThresholdRoundingLayer(nn.Module):
+    def __init__(self, thresholds:torch.Tensor):
+        """Initialize the hard quantization threshold layer.
+        
+        Args:
+            thresholds (torch.Tensor): Thresholds for quantization, shape [num_features, num_thresholds]
+        """
+        super().__init__()
+        self.register_buffer('thresholds', thresholds)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Do hard quantization based on the thresholds.
+
+        Args:
+            x (torch.Tensor): SHape [B, num_features]
+
+        Returns:
+            torch.Tensor: Quantized tensor, shape [B, num_features]
+        """
+        thresholds = self.thresholds
+        thresholds_diffs = torch.diff(thresholds) 
+        thresholds_diffs = torch.cat([-thresholds_diffs[:,0:1], thresholds_diffs, thresholds_diffs[:,-1:]], dim=1)
+        thresholds = torch.cat([thresholds[:,0:1], thresholds], dim=1)
+        thresholds_rounded = thresholds + thresholds_diffs/2 # Shape [num_features, num_thresholds+1]
+
+        x = x.unsqueeze(-1)  # Add a dimension for broadcasting
+        # Compare x with thresholds
+        x = (x > self.thresholds.unsqueeze(0)).float() ## Shape [B, num_features, num_thresholds]   
+        # Sum along the threshold dimension to get the final quantized values
+        index = torch.sum(x, dim=-1)  # Shape [B, num_features]
+        expanded_thresholds = thresholds_rounded.unsqueeze(-1).permute(0,1,2)
+        expanded_index = index.permute(1,0).unsqueeze(-1).to(int)
+        out = torch.gather(expanded_thresholds, 1, expanded_index).squeeze(-1).t()
+        return out
 
 
 ## Not in use

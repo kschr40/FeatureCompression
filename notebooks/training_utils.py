@@ -40,7 +40,8 @@ def train_model(model: nn.Module,
                 decrease_factor: float = 0.001, 
                 train_quantization_layer: bool = True, 
                 device: str = 'cuda', 
-                print_result: bool = True):
+                print_result: bool = True,
+                add_noise = False):
     """
     Trains a model
 
@@ -62,10 +63,13 @@ def train_model(model: nn.Module,
         for param in model.quantization_layer.parameters():
             param.requires_grad = False
     factor = decrease_factor ** (1/num_epochs)
+    best_val_loss = float('inf')
     for epoch in range(num_epochs):
         losses = []
         for x, y in train_loader:
             x = x.to(device)
+            if add_noise:
+                x += torch.randn_like(x) / 25
             y = y.to(device)
             optimizer.zero_grad()
             output = model(x)
@@ -74,11 +78,16 @@ def train_model(model: nn.Module,
             optimizer.step()
             losses.append(loss.item())
         if has_quantization_layer:
-            model.set_tau(max(model.quantization_layer.tau * factor, 0.001))
+            model[0].tau = max(model[0].tau * factor, 0.0001)
+            # model.set_tau(max(model.quantization_layer.tau * factor, 0.001))
         val_loss = eval_val(model, test_loader, criterion = criterion, device = device)
         if epoch % (num_epochs//10) == 0 and print_result:
             print(f'Epoch {epoch+1}/{num_epochs}, Loss: {np.mean(losses)}, Val Loss: {val_loss}')
-    return val_loss
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            best_val_epoch = epoch
+            best_model = model.state_dict()
+    return best_val_loss
 
 
 def eval_quantization(model, val_dataloader, device = 'cuda'):

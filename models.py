@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+from layers import HardQuantizationLayer
+from typing import List
 
 class Combined_Model(nn.Module):
     """Combined model that consists of a start model, a quantization layer, and an end model.""" 
@@ -111,3 +113,75 @@ class MLP_small_per_feature(nn.Module):
         x = x.view(-1, self.num_features)
         x = torch.cat([self.feature_mlps[f](x[:,f].unsqueeze(-1)) for f in range(self.num_features)], dim = 1)
         return x        
+    
+class MLP_small_Quantization(nn.Module):
+    """Small MLP model with one layer from in_features to hidden_features, num_layers-2 layers from hidden_features to hidden_features, and one layer from hidden_features to out_features."""
+    def __init__(self, in_features: int, out_features: int, hidden_features: int, num_layers: int, min_values: torch.Tensor, max_values: torch.Tensor, activation = nn.ReLU, n_bits = 8) -> None:
+        """Initialize the MLP model.
+
+        Args:
+            in_features (int): Input features
+            out_features (int): Output features
+            hidden_features (int): Hidden features
+            num_layers (int): Number of layers
+            activation (nn.Module, optional): Activation function. Defaults to nn.ReLU.
+        """
+        super().__init__()
+        self.quantization_layer = HardQuantizationLayer(n_bits = n_bits, min_values=min_values, max_values=max_values)
+        self.mlp = nn.Sequential(
+            nn.Linear(in_features, hidden_features),
+            activation(),
+            *[nn.Sequential(
+                nn.Linear(hidden_features, hidden_features),
+                activation(),
+            ) for _ in range(num_layers - 2)],
+            nn.Linear(hidden_features, out_features),
+        )
+
+    def forward(self, x, do_quantization = True):
+        """Forward pass of the MLP model.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, in_features)
+
+        Returns:
+            torch.Tensor: Output tensor of shape (batch_size, out_features)
+        """
+        if do_quantization:
+            x = self.quantization_layer(x)    
+        return self.mlp(x)       
+    
+
+class MultiLayerPerceptron(nn.Module):
+    """Multi-layer perceptron with configurable layer sizes.
+
+    The network consists of fully connected layers with sizes specified by n_neurons,
+    with ReLU activation between layers.
+    """
+    def __init__(self, n_neurons: List[int], activation = nn.ReLU) -> None:
+        """Initialize the MLP model.
+
+        Args:
+            n_neurons (List[int]): List specifying number of neurons in each layer
+            activation (nn.Module, optional): Activation function. Defaults to nn.ReLU.
+        """
+        super().__init__()
+        
+        layers = []
+        for i in range(len(n_neurons)-1):
+            layers.append(nn.Linear(n_neurons[i], n_neurons[i+1]))
+            if i < len(n_neurons)-2:  # Don't add activation after last layer
+                layers.append(activation())
+                
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the MLP model.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, n_neurons[0])
+
+        Returns:
+            torch.Tensor: Output tensor of shape (batch_size, n_neurons[-1])
+        """
+        return self.network(x)
