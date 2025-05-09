@@ -4,6 +4,7 @@ import pandas as pd
 import random
 from tqdm import tqdm
 from training import train_mlp_model, train_mlp_pre_model, train_soft_mlp, train_soft_comp_mlp
+import argparse
 
 def random_search_soft_quantization_threshold(train_loader, val_loader, n_steps = 10, n_bits =8, num_features=8, optimize_dict = {}, device = 'cpu'):
     thresholds = get_quantization_thresholds(train_loader, n_bits)
@@ -120,8 +121,12 @@ def random_search_soft_quantization_threshold(train_loader, val_loader, n_steps 
 
 
 if __name__ == "__main__":
-
-    dataset = 'California_Housing'
+    parser = argparse.ArgumentParser(description="Process some input arguments.")
+    # Add --dataset, --type, and --train argument
+    parser.add_argument('--dataset', type=str, required=True,
+                        help='Number of iterations')
+    args = parser.parse_args()
+    dataset = args.dataset
     train_loader, val_loader, test_loader = get_dataloader(dataset = dataset)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
