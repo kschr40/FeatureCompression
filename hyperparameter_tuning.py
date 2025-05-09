@@ -1,4 +1,4 @@
-from datasets import get_dataloader, get_min_max_values, get_quantization_thresholds, process_data
+from datasets import get_min_max_values, get_quantization_thresholds, process_data
 import torch
 import pandas as pd
 import random
@@ -131,12 +131,11 @@ def load_data(datasetname, scratch):
         y = np.load(y_file, allow_pickle=True)
     else:
         dataset = openml.datasets.get_dataset(dataset_id=datasetname, version=1)
-        X, y = dataset.get_data()
+        X, y,_,_ = dataset.get_data(target=dataset.default_target_attribute)
         # Ensure the data folder exists
         os.makedirs(data_folder, exist_ok=True)
         np.save(X_file, X)
         np.save(y_file, y)
-
     return process_data(X, y)
 
 if __name__ == "__main__":
@@ -147,10 +146,19 @@ if __name__ == "__main__":
 
     parser.add_argument('--scratch', type=str, required=True,
                         help='Number of iterations')
+    parser.add_argument('--n_steps', type=int, default=2,
+                        help='Number of iterations')
+    parser.add_argument('--n_bits', type=int, default=4,
+                        help='Number of bits for quantization')
+    parser.add_argument('--result_folder', type=str, default='results',
+                        help='Folder to save results')
     args = parser.parse_args()
     dataset = args.dataset
     scratch = args.scratch
-    data = load_data(dataset)
+    n_steps = args.n_steps
+    n_bits = args.n_bits
+    result_folder = args.result_folder
+
     train_loader, val_loader, test_loader = load_data(dataset, scratch)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -160,13 +168,11 @@ if __name__ == "__main__":
                     'hidden_neurons': [128, 256, 512, 1024, 2048, 4096],
                     'num_epochs': [30,50,70],
                     'decrease_factor': [0.001, 0.0001]}
-    n_bits = 4
-    n_steps = 2
     
     results_df_all = random_search_soft_quantization_threshold(train_loader=train_loader,
                                                                val_loader=val_loader,
                                                                n_bits = n_bits,
                                                                n_steps = n_steps,
                                                                optimize_dict=optimize_dict,
-                                                               device = device)
-    results_df_all.to_csv(f'results/{dataset}/hyperparameter_tuning_{n_bits}bits.csv', index=False)
+                                                               device=device)
+    results_df_all.to_csv(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_{n_steps}steps.csv', index=False)
