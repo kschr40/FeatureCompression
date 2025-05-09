@@ -25,6 +25,7 @@ def train_and_evaluate_best_models(df, loss_columns,
         best_decrease_factor = df['decrease_factor'].values[0]
 
         for f in tqdm(range(n_steps)):
+            current_val_loss = 0
             if column in ['val_loss_mlp',
                         'val_loss_hard_post_mlp',
                         'val_loss_hard_thr_post_mlp']:
@@ -42,17 +43,17 @@ def train_and_evaluate_best_models(df, loss_columns,
                 elif column == 'val_loss_hard_thr_post_mlp':
                     current_val_loss = val_loss_hard_thr_post_mlp
             elif column in ['val_loss_hard_pre_mlp',
-                            'val_loss_hard_pre_thr_mlp']:
+                            'val_loss_hard_thr_pre_mlp']:
                 architecture = [num_features] + [best_hidden_neurons]*best_hidden_layers + [1]
-                val_loss_hard_pre_mlp, val_loss_hard_pre_thr_mlp = train_mlp_pre_model(train_loader=train_loader, val_loader=test_loader,
+                val_loss_hard_pre_mlp, val_loss_hard_thr_pre_mlp = train_mlp_pre_model(train_loader=train_loader, val_loader=test_loader,
                             architecture=architecture,
                             min_values=min_values, max_values=max_values, thresholds=thresholds,
                             num_epochs=int(best_num_epochs), learning_rate=best_learning_rate,
                             weight_decay=best_weight_decay, add_noise=False, n_bits=n_bits, device=device)
                 if column == 'val_loss_hard_pre_mlp':
                     current_val_loss = val_loss_hard_pre_mlp
-                elif column == 'val_loss_hard_pre_thr_mlp':
-                    current_val_loss = val_loss_hard_pre_thr_mlp
+                elif column == 'val_loss_hard_thr_pre_mlp':
+                    current_val_loss = val_loss_hard_thr_pre_mlp
             elif column in ['val_loss_soft_mlp',
                             'val_loss_soft_hard_mlp']:
                 architecture = [num_features] + [best_hidden_neurons]*best_hidden_layers + [1]
@@ -66,19 +67,19 @@ def train_and_evaluate_best_models(df, loss_columns,
                     current_val_loss = val_loss_soft_mlp
                 elif column == 'val_loss_soft_hard_mlp':
                     current_val_loss = val_loss_soft_hard_mlp
-            elif column in ['val_loss_soft_thr_mlp',
-                            'val_loss_soft_hard_thr_mlp']:
+            elif column in ['val_loss_soft_comp_mlp',
+                            'val_loss_soft_hard_comp_mlp']:
                 architecture = [num_features * n_thresholds_per_feature] + [best_hidden_neurons]*best_hidden_layers + [1]
-                val_loss_soft_thr_mlp, val_loss_soft_hard_thr_mlp = train_soft_comp_mlp(train_loader=train_loader, val_loader=test_loader,
+                val_loss_soft_comp_mlp, val_loss_soft_hard_comp_mlp = train_soft_comp_mlp(train_loader=train_loader, val_loader=test_loader,
                             architecture=architecture,
                             min_values=min_values, max_values=max_values, thresholds=thresholds,
                             num_epochs=int(best_num_epochs), learning_rate=best_learning_rate,
                             weight_decay=best_weight_decay, add_noise=False, n_bits=n_bits,
                             decrease_factor=best_decrease_factor, device=device)
-                if column == 'val_loss_soft_thr_mlp':
-                    current_val_loss = val_loss_soft_thr_mlp
-                elif column == 'val_loss_soft_hard_thr_mlp':
-                    current_val_loss = val_loss_soft_hard_thr_mlp
+                if column == 'val_loss_soft_comp_mlp':
+                    current_val_loss = val_loss_soft_comp_mlp
+                elif column == 'val_loss_soft_hard_comp_mlp':
+                    current_val_loss = val_loss_soft_hard_comp_mlp
             result_dict[column].append(current_val_loss)   
     results_df = pd.DataFrame(result_dict) 
     return results_df
@@ -88,7 +89,7 @@ if __name__ == "__main__":
     dataset = 'California_Housing'
 
     device=  'cuda'
-    n_steps = 20
+    n_steps = 2
     n_bits = 4
     num_features = 8
     n_thresholds_per_feature = 2 ** n_bits - 1

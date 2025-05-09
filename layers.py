@@ -4,7 +4,7 @@ import torch.nn as nn
 from typing import Union, List
 
 class CompressionLayer(nn.Module):
-    """Layer that compresses the input by thresholding the input at a given threshold.
+    """Layer that compresses the input by thresholding the input at a given threshold. Per feature, multiple outputs in (0,1) are generated.
     """
     def __init__(self, a_init: torch.Tensor, a_index: torch.Tensor, tau: float = 1.):
         """Initialize the compression layer.
@@ -45,7 +45,7 @@ class CompressionLayer(nn.Module):
     
 
 class QuantizationLayer(nn.Module):
-    """Layer that quantizes the input using learnable thresholds and a sigmoid function as approximation for step function.
+    """Layer that quantizes the input using learnable thresholds and a sigmoid function as approximation for step function. Per features, a single output in (0, n_thresholds_per_feature) are generated.
     """
     def __init__(self, num_features: int, num_thresholds_per_feature: Union[int, List[int]], tau: float = 1.):
         """Initialize the quantization layer.
