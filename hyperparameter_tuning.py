@@ -1,11 +1,13 @@
-from datasets import get_dataloader, get_min_max_values, get_quantization_thresholds
+from datasets import get_dataloader, get_min_max_values, get_quantization_thresholds, process_data
 import torch
 import pandas as pd
 import random
 from tqdm import tqdm
 from training import train_mlp_model, train_mlp_pre_model, train_soft_mlp, train_soft_comp_mlp
 import argparse
-
+import os
+import numpy as np
+import openml
 def random_search_soft_quantization_threshold(train_loader, val_loader, n_steps = 10, n_bits =8, num_features=8, optimize_dict = {}, device = 'cpu'):
     thresholds = get_quantization_thresholds(train_loader, n_bits)
     min_values, max_values = get_min_max_values(train_loader, num_features=num_features)
@@ -119,15 +121,37 @@ def random_search_soft_quantization_threshold(train_loader, val_loader, n_steps 
     results_df = results_df.sort_values('val_loss_mlp')  # Sort by loss ascending    
     return results_df
 
+def load_data(datasetname, scratch):
+    data_folder = scratch
+    X_file = os.path.join(data_folder, datasetname + "X.npy")
+    y_file = os.path.join(data_folder, datasetname + "Y.npy")
+    # Check if the dataset already exists
+    if os.path.exists(X_file) and os.path.exists(y_file):
+        X = np.load(X_file, allow_pickle=True)
+        y = np.load(y_file, allow_pickle=True)
+    else:
+        dataset = openml.datasets.get_dataset(dataset_id=datasetname, version=1)
+        X, y = dataset.get_data()
+        # Ensure the data folder exists
+        os.makedirs(data_folder, exist_ok=True)
+        np.save(X_file, X)
+        np.save(y_file, y)
+
+    return process_data(X, y)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process some input arguments.")
     # Add --dataset, --type, and --train argument
     parser.add_argument('--dataset', type=str, required=True,
                         help='Number of iterations')
+
+    parser.add_argument('--scratch', type=str, required=True,
+                        help='Number of iterations')
     args = parser.parse_args()
     dataset = args.dataset
-    train_loader, val_loader, test_loader = get_dataloader(dataset = dataset)
+    scratch = args.scratch
+    data = load_data(dataset)
+    train_loader, val_loader, test_loader = load_data(dataset, scratch)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     optimize_dict = {'weight_decay': [0, 0.0001],
