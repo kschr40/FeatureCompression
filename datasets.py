@@ -3,6 +3,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import torch
 from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
+import openml
+import os
 
 def estimate_quantile(train_loader, quantiles):
     all_data = []
@@ -61,3 +64,22 @@ def process_data(X,y, batch_size = 64, random_state= None):
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     return train_loader, val_loader, test_loader
+
+
+def load_data(datasetname, scratch):
+    data_folder = scratch
+    X_file = os.path.join(data_folder, datasetname + "X.npy")
+    y_file = os.path.join(data_folder, datasetname + "Y.npy")
+    # Check if the dataset already exists
+    if os.path.exists(X_file) and os.path.exists(y_file):
+        X = np.load(X_file, allow_pickle=True)
+        y = np.load(y_file, allow_pickle=True)
+    else:
+        dataset = openml.datasets.get_dataset(dataset_id=datasetname, version=1)
+        X, y,categorical_indicator, attribute_names= dataset.get_data(target=dataset.default_target_attribute)
+        X = X.T[np.array(categorical_indicator) == False].T
+        # Ensure the data folder exists
+        os.makedirs(data_folder, exist_ok=True)
+        np.save(X_file, X)
+        np.save(y_file, y)
+    return process_data(X, y)

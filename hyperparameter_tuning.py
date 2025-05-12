@@ -1,4 +1,4 @@
-from datasets import get_min_max_values, get_quantization_thresholds, process_data
+from datasets import get_min_max_values, get_quantization_thresholds, load_data
 import torch
 import pandas as pd
 import random
@@ -121,23 +121,23 @@ def random_search_soft_quantization_threshold(train_loader, val_loader, n_steps 
     results_df = results_df.sort_values('val_loss_mlp')  # Sort by loss ascending    
     return results_df
 
-def load_data(datasetname, scratch):
-    data_folder = scratch
-    X_file = os.path.join(data_folder, datasetname + "X.npy")
-    y_file = os.path.join(data_folder, datasetname + "Y.npy")
-    # Check if the dataset already exists
-    if os.path.exists(X_file) and os.path.exists(y_file):
-        X = np.load(X_file, allow_pickle=True)
-        y = np.load(y_file, allow_pickle=True)
-    else:
-        dataset = openml.datasets.get_dataset(dataset_id=datasetname, version=1)
-        X, y,categorical_indicator, attribute_names= dataset.get_data(target=dataset.default_target_attribute)
-        X = X.T[np.array(categorical_indicator) == False].T
-        # Ensure the data folder exists
-        os.makedirs(data_folder, exist_ok=True)
-        np.save(X_file, X)
-        np.save(y_file, y)
-    return process_data(X, y)
+# def load_data(datasetname, scratch):
+#     data_folder = scratch
+#     X_file = os.path.join(data_folder, datasetname + "X.npy")
+#     y_file = os.path.join(data_folder, datasetname + "Y.npy")
+#     # Check if the dataset already exists
+#     if os.path.exists(X_file) and os.path.exists(y_file):
+#         X = np.load(X_file, allow_pickle=True)
+#         y = np.load(y_file, allow_pickle=True)
+#     else:
+#         dataset = openml.datasets.get_dataset(dataset_id=datasetname, version=1)
+#         X, y,categorical_indicator, attribute_names= dataset.get_data(target=dataset.default_target_attribute)
+#         X = X.T[np.array(categorical_indicator) == False].T
+#         # Ensure the data folder exists
+#         os.makedirs(data_folder, exist_ok=True)
+#         np.save(X_file, X)
+#         np.save(y_file, y)
+#     return process_data(X, y)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process some input arguments.")
@@ -173,6 +173,7 @@ if __name__ == "__main__":
                     'num_epochs': [30,50,70],
                     'decrease_factor': [0.001, 0.0001]}
     
+    print(f"Running random search for {n_steps} steps with {n_bits} bits on dataset {dataset}")
     results_df_all = random_search_soft_quantization_threshold(train_loader=train_loader,
                                                                val_loader=val_loader,
                                                                n_bits = n_bits,
@@ -181,3 +182,4 @@ if __name__ == "__main__":
                                                                device=device,
                                                                num_features=num_features)
     results_df_all.to_csv(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_{n_steps}steps.csv', index=False)
+    print(f"Finished random search for {n_steps} steps with {n_bits} bits on dataset {dataset}")

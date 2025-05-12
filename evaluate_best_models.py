@@ -1,14 +1,17 @@
-from datasets import get_dataloader, get_min_max_values, get_quantization_thresholds
+from datasets import load_data, get_min_max_values, get_quantization_thresholds
 import torch
 import pandas as pd
 import random
 from tqdm import tqdm
 from training import train_mlp_model, train_mlp_pre_model, train_soft_mlp, train_soft_comp_mlp
+import argparse
+from os.path import join
 
 def train_and_evaluate_best_models(df, loss_columns,
-                                   n_steps = 5, n_bits = 4, device = 'cuda'):
+                                   train_loader, test_loader,
+                                   num_features,
+                                   n_runs = 5, n_bits = 4, device = 'cuda'):
     
-    train_loader, val_loader, test_loader = get_dataloader(dataset = dataset)
     min_values, max_values = get_min_max_values(train_loader, num_features)
     thresholds = get_quantization_thresholds(train_loader, n_bits)
 
@@ -24,7 +27,7 @@ def train_and_evaluate_best_models(df, loss_columns,
         best_num_epochs = df['num_epochs'].values[0]
         best_decrease_factor = df['decrease_factor'].values[0]
 
-        for f in tqdm(range(n_steps)):
+        for f in tqdm(range(n_runs)):
             current_val_loss = 0
             if column in ['val_loss_mlp',
                         'val_loss_hard_post_mlp',
@@ -69,6 +72,7 @@ def train_and_evaluate_best_models(df, loss_columns,
                     current_val_loss = val_loss_soft_hard_mlp
             elif column in ['val_loss_soft_comp_mlp',
                             'val_loss_soft_hard_comp_mlp']:
+                n_thresholds_per_feature = 2 ** n_bits - 1
                 architecture = [num_features * n_thresholds_per_feature] + [best_hidden_neurons]*best_hidden_layers + [1]
                 val_loss_soft_comp_mlp, val_loss_soft_hard_comp_mlp = train_soft_comp_mlp(train_loader=train_loader, val_loader=test_loader,
                             architecture=architecture,
@@ -86,19 +90,49 @@ def train_and_evaluate_best_models(df, loss_columns,
 
 
 if __name__ == "__main__":
-    dataset = 'California_Housing'
+    parser = argparse.ArgumentParser(description="Process some input arguments.")
+    parser.add_argument('--dataset', type=str, required=True,
+                        help='Number of iterations')
 
-    device=  'cuda'
-    n_steps = 2
-    n_bits = 4
-    num_features = 8
-    n_thresholds_per_feature = 2 ** n_bits - 1
-    n_thresholds = n_thresholds_per_feature * num_features
-    path = f'results/California_Housing/random_search_results_all_{n_bits}bits.csv'
-    df = pd.read_csv(path)
+    parser.add_argument('--scratch', type=str, required=True,
+                        help='Number of iterations')
+    parser.add_argument('--n_runs', type=int, default=2,
+                        help='Number of runs per model')
+    parser.add_argument('--n_bits', type=int, default=4,
+                        help='Number of bits for quantization')
+    parser.add_argument('--n_steps', type=int, default=100,)
+    parser.add_argument('--result_folder', type=str, default='results',
+                        help='Folder to save results')
+    parser.add_argument('--csv_folder', type=str, 
+                        default=None,)
+    args = parser.parse_args()
+    dataset = args.dataset
+    scratch = args.scratch
+    n_runs = args.n_runs
+    n_bits = args.n_bits
+    n_steps = args.n_steps
+    result_folder = args.result_folder
+    csv_folder = args.csv_folder
+    if csv_folder is None:
+        csv_folder = result_folder
+    csv_path = join(csv_folder, f'{dataset}_hyperparameter_tuning_{n_bits}bits_{n_steps}steps.csv')
+
+    train_loader, val_loader, test_loader = load_data(dataset, scratch)
+    for X, _ in train_loader:
+        num_features = X.shape[1]
+        break
+
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f"Using device: {device}")
+
+    df = pd.read_csv(csv_path)
     loss_columns = [col for col in df.columns if 'loss' in col]
 
+    print(f"Start evaluating best models for {dataset} dataset")
     results_df = train_and_evaluate_best_models(df, loss_columns, 
-                                                n_steps = n_steps, n_bits = n_bits, device = 'cuda')    
-    results_df.to_csv(f'results/{dataset}/best_models_{n_steps}steps_{n_bits}bits.csv', index=False)
+                                                train_loader=train_loader, test_loader=test_loader,
+                                                num_features=num_features,
+                                                n_runs=n_runs, n_bits=n_bits, device=device)    
+    results_df.to_csv(join(result_folder, f'{dataset}_best_models__{n_bits}bits_{n_runs}runs.csv'), index=False)
+    print(f"Finished evaluating best models for {dataset} dataset")
 
