@@ -62,7 +62,7 @@ def random_search_soft_quantization_threshold(train_loader, val_loader, n_steps 
             else:
                 raise ValueError(f"Unknown hyperparameter: {key}")
             
-        architecture = [8] + [hidden_neurons] * hidden_layers + [1]
+        architecture = [num_features] + [hidden_neurons] * hidden_layers + [1]
         hyperparameter_dict['weight_decay'].append(weight_decay)
         hyperparameter_dict['learning_rate'].append(learning_rate)
         hyperparameter_dict['hidden_layers'].append(hidden_layers)
