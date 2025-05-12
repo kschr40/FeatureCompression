@@ -104,7 +104,7 @@ if __name__ == "__main__":
     parser.add_argument('--result_folder', type=str, default='results',
                         help='Folder to save results')
     parser.add_argument('--csv_folder', type=str, 
-                        default=None,)
+                        default=None, required=False)
     args = parser.parse_args()
     dataset = args.dataset
     scratch = args.scratch
