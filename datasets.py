@@ -34,11 +34,9 @@ def get_min_max_values(train_loader, num_features):
 
 def process_data(X,y, batch_size = 64, random_state= None):
     # Split the data into training and testing sets
-    print(type(X), type(y))
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=random_state)
     # Further split training data into train and validation sets
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=random_state)
-    type(y_test)
     # Standardize the features
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)

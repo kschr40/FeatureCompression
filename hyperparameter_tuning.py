@@ -131,7 +131,8 @@ def load_data(datasetname, scratch):
         y = np.load(y_file, allow_pickle=True)
     else:
         dataset = openml.datasets.get_dataset(dataset_id=datasetname, version=1)
-        X, y,_,_ = dataset.get_data(target=dataset.default_target_attribute)
+        X, y,categorical_indicator, attribute_names= dataset.get_data(target=dataset.default_target_attribute)
+        X = X.T[np.array(categorical_indicator) == False].T
         # Ensure the data folder exists
         os.makedirs(data_folder, exist_ok=True)
         np.save(X_file, X)
@@ -160,6 +161,9 @@ if __name__ == "__main__":
     result_folder = args.result_folder
 
     train_loader, val_loader, test_loader = load_data(dataset, scratch)
+    for X, _ in train_loader:
+        num_features = X.shape[1]
+        break
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     optimize_dict = {'weight_decay': [0, 0.0001],
@@ -174,5 +178,6 @@ if __name__ == "__main__":
                                                                n_bits = n_bits,
                                                                n_steps = n_steps,
                                                                optimize_dict=optimize_dict,
-                                                               device=device)
+                                                               device=device,
+                                                               num_features=num_features)
     results_df_all.to_csv(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_{n_steps}steps.csv', index=False)
