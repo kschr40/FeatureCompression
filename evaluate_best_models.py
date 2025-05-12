@@ -57,8 +57,8 @@ def train_and_evaluate_best_models(df, loss_columns,
                     current_val_loss = val_loss_hard_pre_mlp
                 elif column == 'val_loss_hard_thr_pre_mlp':
                     current_val_loss = val_loss_hard_thr_pre_mlp
-            elif column in ['val_loss_soft_mlp',
-                            'val_loss_soft_hard_mlp']:
+            elif column in ['val_loss_soft_mlp']:
+                            # ,'val_loss_soft_hard_mlp']:
                 architecture = [num_features] + [best_hidden_neurons]*best_hidden_layers + [1]
                 val_loss_soft_mlp, val_loss_soft_hard_mlp = train_soft_mlp(train_loader=train_loader, val_loader=test_loader,
                             architecture=architecture,
@@ -66,12 +66,13 @@ def train_and_evaluate_best_models(df, loss_columns,
                             num_epochs=int(best_num_epochs), learning_rate=best_learning_rate,
                             weight_decay=best_weight_decay, add_noise=False, n_bits=n_bits,
                             decrease_factor=best_decrease_factor, device=device)
+                result_dict['val_loss_soft_hard_mlp'].append(val_loss_soft_hard_mlp)   
                 if column == 'val_loss_soft_mlp':
                     current_val_loss = val_loss_soft_mlp
                 elif column == 'val_loss_soft_hard_mlp':
                     current_val_loss = val_loss_soft_hard_mlp
-            elif column in ['val_loss_soft_comp_mlp',
-                            'val_loss_soft_hard_comp_mlp']:
+            elif column in ['val_loss_soft_comp_mlp']:
+                            # 'val_loss_soft_hard_comp_mlp']:
                 n_thresholds_per_feature = 2 ** n_bits - 1
                 architecture = [num_features * n_thresholds_per_feature] + [best_hidden_neurons]*best_hidden_layers + [1]
                 val_loss_soft_comp_mlp, val_loss_soft_hard_comp_mlp = train_soft_comp_mlp(train_loader=train_loader, val_loader=test_loader,
@@ -80,6 +81,7 @@ def train_and_evaluate_best_models(df, loss_columns,
                             num_epochs=int(best_num_epochs), learning_rate=best_learning_rate,
                             weight_decay=best_weight_decay, add_noise=False, n_bits=n_bits,
                             decrease_factor=best_decrease_factor, device=device)
+                result_dict['val_loss_soft_hard_comp_mlp'].append(val_loss_soft_hard_comp_mlp)
                 if column == 'val_loss_soft_comp_mlp':
                     current_val_loss = val_loss_soft_comp_mlp
                 elif column == 'val_loss_soft_hard_comp_mlp':
@@ -104,7 +106,7 @@ if __name__ == "__main__":
     parser.add_argument('--result_folder', type=str, default='results',
                         help='Folder to save results')
     parser.add_argument('--csv_folder', type=str, 
-                        default=None,)
+                        default=None,required=False)
     args = parser.parse_args()
     dataset = args.dataset
     scratch = args.scratch
