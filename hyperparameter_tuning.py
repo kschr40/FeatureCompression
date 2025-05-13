@@ -8,7 +8,11 @@ import argparse
 import os
 import numpy as np
 import openml
-def random_search_soft_quantization_threshold(train_loader, val_loader, n_steps = 10, n_bits =8, num_features=8, optimize_dict = {}, device = 'cpu'):
+
+def random_search_soft_quantization_threshold(train_loader, val_loader, 
+                                              result_folder, dataset,  
+                                              n_steps = 10, n_bits =8, num_features=8, optimize_dict = {}, device = 'cpu'):
+    
     thresholds = get_quantization_thresholds(train_loader, n_bits)
     min_values, max_values = get_min_max_values(train_loader, num_features=num_features)
     
@@ -43,7 +47,7 @@ def random_search_soft_quantization_threshold(train_loader, val_loader, n_steps 
     
 
     # Perform random search
-    for _ in tqdm(range(n_steps)):
+    for f in tqdm(range(n_steps)):
         for key, value in optimize_dict.items():
             if key == 'weight_decay':
                 weight_decay = random.choice(value)
@@ -102,23 +106,28 @@ def random_search_soft_quantization_threshold(train_loader, val_loader, n_steps 
         val_loss_soft_comp_mlp_values.append(val_loss_soft_comp_mlp)
         val_loss_soft_hard_comp_mlp_values.append(val_loss_soft_hard_comp_mlp)
  
-    losses_df = pd.DataFrame({
-        'val_loss_mlp': val_loss_mlp_values,
-        'val_loss_hard_post_mlp': val_loss_hard_post_mlp_values,
-        'val_loss_hard_thr_post_mlp': val_loss_hard_thr_post_mlp_values,
-        'val_loss_hard_pre_mlp': val_loss_hard_pre_mlp_values,
-        'val_loss_hard_thr_pre_mlp': val_loss_hard_thr_pre_mlp_values,
-        'val_loss_soft_mlp': val_loss_soft_mlp_values,
-        'val_loss_soft_hard_mlp': val_loss_soft_hard_mlp_values,
-        'val_loss_soft_comp_mlp': val_loss_soft_comp_mlp_values,
-        'val_loss_soft_hard_comp_mlp': val_loss_soft_hard_comp_mlp_values
-    })
+        losses_df = pd.DataFrame({
+            'val_loss_mlp': val_loss_mlp_values,
+            'val_loss_hard_post_mlp': val_loss_hard_post_mlp_values,
+            'val_loss_hard_thr_post_mlp': val_loss_hard_thr_post_mlp_values,
+            'val_loss_hard_pre_mlp': val_loss_hard_pre_mlp_values,
+            'val_loss_hard_thr_pre_mlp': val_loss_hard_thr_pre_mlp_values,
+            'val_loss_soft_mlp': val_loss_soft_mlp_values,
+            'val_loss_soft_hard_mlp': val_loss_soft_hard_mlp_values,
+            'val_loss_soft_comp_mlp': val_loss_soft_comp_mlp_values,
+            'val_loss_soft_hard_comp_mlp': val_loss_soft_hard_comp_mlp_values
+        })
 
-    # Create DataFrame with results
-    results_df = pd.DataFrame(hyperparameter_dict)
-    results_df = pd.concat([results_df, losses_df], axis=1)
+        # Create DataFrame with results
+        results_df = pd.DataFrame(hyperparameter_dict)
+        results_df = pd.concat([results_df, losses_df], axis=1)
 
-    results_df = results_df.sort_values('val_loss_mlp')  # Sort by loss ascending    
+        results_df = results_df.sort_values('val_loss_mlp')  # Sort by loss ascending  
+        results_df.to_csv(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_{f+1}steps.csv', index=False)
+        # Delete the intermediate CSV file
+        if f > 0:
+            os.remove(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_{f}steps.csv')
+
     return results_df
 
 # def load_data(datasetname, scratch):
@@ -174,12 +183,14 @@ if __name__ == "__main__":
                     'decrease_factor': [0.001, 0.0001]}
     
     print(f"Running random search for {n_steps} steps with {n_bits} bits on dataset {dataset}")
-    results_df_all = random_search_soft_quantization_threshold(train_loader=train_loader,
-                                                               val_loader=val_loader,
-                                                               n_bits = n_bits,
-                                                               n_steps = n_steps,
-                                                               optimize_dict=optimize_dict,
-                                                               device=device,
-                                                               num_features=num_features)
-    results_df_all.to_csv(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_{n_steps}steps.csv', index=False)
+    results_df_all = random_search_soft_quantization_threshold( train_loader=train_loader,
+                                                                val_loader=val_loader,
+                                                                result_folder=result_folder,
+                                                                dataset=dataset,
+                                                                n_bits=n_bits,
+                                                                n_steps=n_steps,
+                                                                optimize_dict=optimize_dict,
+                                                                device=device,
+                                                                num_features=num_features)
+    # results_df_all.to_csv(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_{n_steps}steps_Final.csv', index=False)
     print(f"Finished random search for {n_steps} steps with {n_bits} bits on dataset {dataset}")

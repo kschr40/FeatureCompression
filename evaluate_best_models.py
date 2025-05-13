@@ -6,9 +6,11 @@ from tqdm import tqdm
 from training import train_mlp_model, train_mlp_pre_model, train_soft_mlp, train_soft_comp_mlp
 import argparse
 from os.path import join
+import os
 
 def train_and_evaluate_best_models(df, loss_columns,
                                    train_loader, test_loader,
+                                   dataset, result_folder,
                                    num_features,
                                    n_runs = 5, n_bits = 4, device = 'cuda'):
     
@@ -18,17 +20,17 @@ def train_and_evaluate_best_models(df, loss_columns,
     result_dict = {}
     for col in loss_columns:
         result_dict[col] = []
-    for column in tqdm(loss_columns):
-        df.sort_values(by=column, ascending=True, inplace=True)
-        best_weight_decay = df['weight_decay'].values[0]
-        best_learning_rate = df['learning_rate'].values[0]
-        best_hidden_layers = df['hidden_layers'].values[0]
-        best_hidden_neurons = df['hidden_neurons'].values[0]
-        best_num_epochs = df['num_epochs'].values[0]
-        best_decrease_factor = df['decrease_factor'].values[0]
 
-        for f in tqdm(range(n_runs)):
-            current_val_loss = 0
+    for f in tqdm(range(n_runs)):
+        for column in loss_columns:
+            df.sort_values(by=column, ascending=True, inplace=True)
+            best_weight_decay = df['weight_decay'].values[0]
+            best_learning_rate = df['learning_rate'].values[0]
+            best_hidden_layers = df['hidden_layers'].values[0]
+            best_hidden_neurons = df['hidden_neurons'].values[0]
+            best_num_epochs = df['num_epochs'].values[0]
+            best_decrease_factor = df['decrease_factor'].values[0]
+
             if column in ['val_loss_mlp',
                         'val_loss_hard_post_mlp',
                         'val_loss_hard_thr_post_mlp']:
@@ -38,13 +40,12 @@ def train_and_evaluate_best_models(df, loss_columns,
                             min_values=min_values, max_values=max_values, thresholds=thresholds,
                             num_epochs=int(best_num_epochs), learning_rate=best_learning_rate,
                             weight_decay=best_weight_decay, add_noise=False, n_bits=n_bits, device=device)
-                
                 if column == 'val_loss_mlp':
-                    current_val_loss = val_loss_mlp
+                    result_dict['val_loss_mlp'].append(val_loss_mlp)
                 elif column == 'val_loss_hard_post_mlp':
-                    current_val_loss = val_loss_hard_post_mlp
+                    result_dict['val_loss_hard_post_mlp'].append(val_loss_hard_post_mlp)
                 elif column == 'val_loss_hard_thr_post_mlp':
-                    current_val_loss = val_loss_hard_thr_post_mlp
+                    result_dict['val_loss_hard_thr_post_mlp'].append(val_loss_hard_thr_post_mlp)
             elif column in ['val_loss_hard_pre_mlp',
                             'val_loss_hard_thr_pre_mlp']:
                 architecture = [num_features] + [best_hidden_neurons]*best_hidden_layers + [1]
@@ -54,9 +55,9 @@ def train_and_evaluate_best_models(df, loss_columns,
                             num_epochs=int(best_num_epochs), learning_rate=best_learning_rate,
                             weight_decay=best_weight_decay, add_noise=False, n_bits=n_bits, device=device)
                 if column == 'val_loss_hard_pre_mlp':
-                    current_val_loss = val_loss_hard_pre_mlp
+                    result_dict['val_loss_hard_pre_mlp'].append(val_loss_hard_pre_mlp)
                 elif column == 'val_loss_hard_thr_pre_mlp':
-                    current_val_loss = val_loss_hard_thr_pre_mlp
+                    result_dict['val_loss_hard_thr_pre_mlp'].append(val_loss_hard_thr_pre_mlp)
             elif column in ['val_loss_soft_mlp']:
                             # ,'val_loss_soft_hard_mlp']:
                 architecture = [num_features] + [best_hidden_neurons]*best_hidden_layers + [1]
@@ -68,9 +69,9 @@ def train_and_evaluate_best_models(df, loss_columns,
                             decrease_factor=best_decrease_factor, device=device)
                 result_dict['val_loss_soft_hard_mlp'].append(val_loss_soft_hard_mlp)   
                 if column == 'val_loss_soft_mlp':
-                    current_val_loss = val_loss_soft_mlp
+                    result_dict['val_loss_soft_mlp'].append(val_loss_soft_mlp)
                 elif column == 'val_loss_soft_hard_mlp':
-                    current_val_loss = val_loss_soft_hard_mlp
+                    result_dict['val_loss_soft_hard_mlp'].append(val_loss_soft_hard_mlp)
             elif column in ['val_loss_soft_comp_mlp']:
                             # 'val_loss_soft_hard_comp_mlp']:
                 n_thresholds_per_feature = 2 ** n_bits - 1
@@ -83,11 +84,14 @@ def train_and_evaluate_best_models(df, loss_columns,
                             decrease_factor=best_decrease_factor, device=device)
                 result_dict['val_loss_soft_hard_comp_mlp'].append(val_loss_soft_hard_comp_mlp)
                 if column == 'val_loss_soft_comp_mlp':
-                    current_val_loss = val_loss_soft_comp_mlp
+                    result_dict['val_loss_soft_comp_mlp'].append(val_loss_soft_comp_mlp)
                 elif column == 'val_loss_soft_hard_comp_mlp':
-                    current_val_loss = val_loss_soft_hard_comp_mlp
-            result_dict[column].append(current_val_loss)   
-    results_df = pd.DataFrame(result_dict) 
+                    result_dict['val_loss_soft_hard_comp_mlp'].append(val_loss_soft_hard_comp_mlp)
+        results_df = pd.DataFrame(result_dict) 
+        results_df.to_csv(join(result_folder, f'{dataset}_best_models__{n_bits}bits_{f+1}runs.csv'), index=False)
+        if f > 0:
+            os.remove(join(result_folder, f'{dataset}_best_models__{n_bits}bits_{f}runs.csv'))
+
     return results_df
 
 
@@ -133,8 +137,9 @@ if __name__ == "__main__":
     print(f"Start evaluating best models for {dataset} dataset")
     results_df = train_and_evaluate_best_models(df, loss_columns, 
                                                 train_loader=train_loader, test_loader=test_loader,
+                                                dataset=dataset, result_folder=result_folder,
                                                 num_features=num_features,
                                                 n_runs=n_runs, n_bits=n_bits, device=device)    
-    results_df.to_csv(join(result_folder, f'{dataset}_best_models__{n_bits}bits_{n_runs}runs.csv'), index=False)
+    # results_df.to_csv(join(result_folder, f'{dataset}_best_models__{n_bits}bits_{n_runs}runs_Final.csv'), index=False)
     print(f"Finished evaluating best models for {dataset} dataset")
 
