@@ -178,7 +178,7 @@ if __name__ == "__main__":
     optimize_dict = {'weight_decay': [0, 0.0001],
                     'learning_rate': [0.001, 0.0001],
                     'hidden_layers': [5,6,8,10],
-                    'hidden_neurons': [1024, 2048, 4096, 8192],
+                    'hidden_neurons': [64,128,256,512,1024, 2048, 4096, 8192],
                     'num_epochs': [30,50,70],
                     'decrease_factor': [0.001, 0.0001]}
     
