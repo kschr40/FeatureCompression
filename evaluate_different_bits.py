@@ -18,10 +18,11 @@ def train_and_evaluate_different_bits(df, loss_columns,
     
     min_values, max_values = get_min_max_values(train_loader, num_features=num_features)
     
-    result_dict = {}
+    result_dict = {'bits': []}
     for col in loss_columns:
         result_dict[col] = []
     for n_bits in tqdm(range(n_bits_min, n_bits_max+1)):
+        result_dict['bits'].append(n_bits)
         thresholds = get_quantization_thresholds(train_loader, n_bits)
         
         for column in loss_columns:
@@ -30,7 +31,6 @@ def train_and_evaluate_different_bits(df, loss_columns,
             best_learning_rate = df['learning_rate'].values[0]
             best_hidden_layers = df['hidden_layers'].values[0]
             best_hidden_neurons = df['hidden_neurons'].values[0]
-            best_hidden_neurons = 10
             best_num_epochs = df['num_epochs'].values[0]
             best_decrease_factor = df['decrease_factor'].values[0]
             if column in ['val_loss_mlp',
