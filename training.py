@@ -220,3 +220,34 @@ def train_soft_comp_mlp(architecture, min_values, max_values, thresholds,
     comp_model.set_round_quantization(True)   
     val_loss_soft_hard_thr_mlp = eval_val(model=model_soft_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
     return val_loss_soft_thr_mlp, val_loss_soft_hard_thr_mlp
+
+def train_hard_comp_mlp(architecture, min_values, max_values, thresholds,
+                    train_loader, val_loader,
+                    num_epochs=100, learning_rate=0.001, weight_decay=0.0001,add_noise=False,
+                    n_bits = 8, decrease_factor = 0.001, device='cuda'):
+    num_features = thresholds.shape[0]
+    num_thresholds_per_feature = thresholds.shape[1]
+
+    # quantization_model = HardQuantizationLayer(n_bits=n_bits, min_values=min_values, max_values=max_values)
+
+    comp_thr_model = CompressionLayer(a_init = thresholds.flatten(), 
+                                  a_index = torch.repeat_interleave(torch.arange(num_features),num_thresholds_per_feature), 
+                                  tau = 1)
+    comp_thr_model.set_round_quantization(True)
+    architecture[0] = num_features * num_thresholds_per_feature
+    mlp = MultiLayerPerceptron(architecture)
+
+    model_hard_thr_mlp = nn.Sequential(comp_thr_model, mlp)
+    model_hard_thr_mlp.to(device)
+
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model_hard_thr_mlp.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    best_val_loss = train_model(model_hard_thr_mlp, num_epochs=num_epochs,
+                train_loader=train_loader, val_loader=val_loader,
+                optimizer=optimizer, criterion=criterion,has_quantization_layer=True,
+                train_quantization_layer=True, print_result=False, decrease_factor=decrease_factor,
+                add_noise=add_noise, device=device)
+
+    val_loss_hard_thr_mlp = eval_val(model=model_hard_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
+
+    return val_loss_hard_thr_mlp
