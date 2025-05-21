@@ -29,20 +29,23 @@ model_counters = {'Full precision': 0, 'Post minmaxQ': 0, 'Post quantileQ':0, 'P
 
 for data in datasets:
     df = pd.read_csv('results/' + f'{data}' + '_best_models__4bits_20runs.csv', sep=',', index_col=False)
+    print(df)
 
-    methods = {'Full precision': df.iloc[0],
-              'Post minmaxQ': df.iloc[1],
-              'Post quantileQ': df.iloc[2],
-              'Pre minmaxQ': df.iloc[3],
-              'Pre quantileQ': df.iloc[4],
-              'SoftQ': df.iloc[5],
-              'HardQ': df.iloc[5],
-              'Bitwise softQ': df.iloc[6],
-              'Bitwise hardQ': df.iloc[6]}
+    methods = {
+        'Full precision': df['val_loss_mlp'].tolist(),
+        'Post minmaxQ': df['val_loss_hard_post_mlp'].tolist(),
+        'Post quantileQ': df['val_loss_hard_thr_post_mlp'].tolist(),
+        'Pre minmaxQ': df['val_loss_hard_pre_mlp'].tolist(),
+        'Pre quantileQ': df['val_loss_hard_thr_pre_mlp'].tolist(),
+        'SoftQ': df['val_loss_soft_mlp'].tolist(),
+        'HardQ': df['val_loss_soft_hard_mlp'].tolist(),
+        'Bitwise softQ': df['val_loss_soft_comp_mlp'].tolist(),
+        'Bitwise hardQ': df['val_loss_soft_comp_mlp'].tolist()
+    }
 
     for key in methods:
         column = methods[key]
-        min_values = column.min()
+        min_values = min(column)
         counter = 0
         meanvalue_acc = 0
         for value in column:
