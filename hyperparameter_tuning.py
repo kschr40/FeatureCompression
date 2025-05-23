@@ -1,4 +1,4 @@
-from datasets import get_min_max_values, get_quantization_thresholds, load_data
+from datasets import get_min_max_values, get_quantization_thresholds, load_data, get_minmax_thresholds
 import torch
 import pandas as pd
 import random
@@ -16,7 +16,7 @@ def random_search_soft_quantization_threshold(train_loader, val_loader,
     
     thresholds = get_quantization_thresholds(train_loader, n_bits)
     min_values, max_values = get_min_max_values(train_loader, num_features=num_features)
-    
+    minmax_thresholds = get_minmax_thresholds(min_values, max_values, n_bits)
     # Define default hyperparameters
     weight_decay =  0
     learning_rate = 0.001
@@ -36,8 +36,8 @@ def random_search_soft_quantization_threshold(train_loader, val_loader,
     val_loss_soft_hard_mlp_values = []
     val_loss_soft_comp_mlp_values = []
     val_loss_soft_hard_comp_mlp_values = []
-    val_loss_hard_comp_mlp_values = []
-    
+    val_loss_hard_bitwise_minmax_mlp_values = []
+    val_loss_hard_bitwise_quantile_mlp_values = []
 
     hyperparameter_dict = {
         'weight_decay': [],
@@ -109,7 +109,7 @@ def random_search_soft_quantization_threshold(train_loader, val_loader,
                 n_bits=n_bits, decrease_factor=decrease_factor, device=device)
             
         # Calculate losses for hard quantization model
-        val_loss_hard_comp_mlp = train_hard_comp_mlp(train_loader=train_loader, val_loader=val_loader, architecture=architecture, min_values=min_values, max_values=max_values, thresholds=thresholds,
+        val_loss_hard_bitwise_minmax_mlp, val_loss_hard_bitwise_quantile_mlp = train_hard_comp_mlp(train_loader=train_loader, val_loader=val_loader, architecture=architecture, minmax_thresholds=minmax_thresholds, thresholds=thresholds,
                                                     num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                                                     n_bits=n_bits, decrease_factor=decrease_factor, device=device)
 
@@ -122,8 +122,9 @@ def random_search_soft_quantization_threshold(train_loader, val_loader,
         val_loss_soft_hard_mlp_values.append(val_loss_soft_hard_mlp)
         val_loss_soft_comp_mlp_values.append(val_loss_soft_comp_mlp)
         val_loss_soft_hard_comp_mlp_values.append(val_loss_soft_hard_comp_mlp)
-        val_loss_hard_comp_mlp_values.append(val_loss_hard_comp_mlp)
- 
+        val_loss_hard_bitwise_minmax_mlp_values.append(val_loss_hard_bitwise_minmax_mlp)
+        val_loss_hard_bitwise_quantile_mlp_values.append(val_loss_hard_bitwise_quantile_mlp)
+
         losses_df = pd.DataFrame({
             'val_loss_mlp': val_loss_mlp_values,
             'val_loss_hard_post_mlp': val_loss_hard_post_mlp_values,
@@ -134,7 +135,8 @@ def random_search_soft_quantization_threshold(train_loader, val_loader,
             'val_loss_soft_hard_mlp': val_loss_soft_hard_mlp_values,
             'val_loss_soft_comp_mlp': val_loss_soft_comp_mlp_values,
             'val_loss_soft_hard_comp_mlp': val_loss_soft_hard_comp_mlp_values,
-            'val_loss_hard_comp_mlp': val_loss_hard_comp_mlp_values
+            'val_loss_hard_bitwise_minmax_mlp': val_loss_hard_bitwise_minmax_mlp_values,
+            'val_loss_hard_bitwise_quantile_mlp': val_loss_hard_bitwise_quantile_mlp_values
         })
 
         # Create DataFrame with results
@@ -209,7 +211,6 @@ if __name__ == "__main__":
                     'decrease_factor': [0.001, 0.0001]}
     
     print(f"Running random search for {n_steps} steps with {n_bits} bits on dataset {dataset}")
-    print(only_additional)
     results_df_all = random_search_soft_quantization_threshold( train_loader=train_loader,
                                                                 val_loader=val_loader,
                                                                 result_folder=result_folder,

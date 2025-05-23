@@ -26,6 +26,13 @@ def get_quantization_thresholds(train_loader, n_bits):
     thresholds = estimate_quantile(train_loader, quantiles)
     return thresholds
 
+def get_minmax_thresholds(min_values, max_values, n_bits):
+    M = 2 ** n_bits - 1
+    s = (max_values - min_values) / (M) ## shape [num_features]
+    s = s.unsqueeze(1)  # Add a new dimension to match the shape of min_values, shape [num_features, 1]
+    thresholds = min_values.unsqueeze(1) + s * (torch.arange(1, M+1).unsqueeze(0) - 0.5) ## shape [num_features, M]
+    return thresholds
+
 def get_min_max_values(train_loader, num_features):
     min_values = torch.tensor([float('inf')] * num_features)
     max_values = torch.tensor([-float('inf')] * num_features)

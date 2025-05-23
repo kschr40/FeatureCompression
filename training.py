@@ -4,6 +4,7 @@ import torch.nn as nn
 
 from layers import CompressionLayer, QuantizationLayer, HardQuantizationThresholdRoundingLayer, HardQuantizationLayer, HardQuantizationThresholdLayer
 from models import MultiLayerPerceptron
+from datasets import get_minmax_thresholds
 
 
 def eval_val(model, val_loader, criterion = nn.MSELoss(), device = 'cuda'):
@@ -248,6 +249,27 @@ def train_hard_comp_mlp(architecture, min_values, max_values, thresholds,
                 train_quantization_layer=True, print_result=False, decrease_factor=decrease_factor,
                 add_noise=add_noise, device=device)
 
-    val_loss_hard_thr_mlp = eval_val(model=model_hard_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
+    val_loss_hard_bitwise_quantile_mlp = eval_val(model=model_hard_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
+    
+    minmax_thresholds = get_minmax_thresholds(min_values, max_values, n_bits)
+    comp_thr_model = CompressionLayer(a_init = minmax_thresholds.flatten(),
+                                  a_index = torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
+                                  tau = 1)
+    comp_thr_model.set_round_quantization(True)
+    architecture[0] = num_features * num_thresholds_per_feature
+    mlp = MultiLayerPerceptron(architecture)
 
-    return val_loss_hard_thr_mlp
+    model_hard_thr_mlp = nn.Sequential(comp_thr_model, mlp)
+    model_hard_thr_mlp.to(device)
+
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model_hard_thr_mlp.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    best_val_loss = train_model(model_hard_thr_mlp, num_epochs=num_epochs,
+                train_loader=train_loader, val_loader=val_loader,
+                optimizer=optimizer, criterion=criterion,has_quantization_layer=True,
+                train_quantization_layer=True, print_result=False, decrease_factor=decrease_factor,
+                add_noise=add_noise, device=device)
+    
+    val_loss_hard_bitwise_minmax_mlp = eval_val(model=model_hard_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
+
+    return val_loss_hard_bitwise_minmax_mlp, val_loss_hard_bitwise_quantile_mlp
