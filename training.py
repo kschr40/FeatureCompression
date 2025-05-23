@@ -4,7 +4,6 @@ import torch.nn as nn
 
 from layers import CompressionLayer, QuantizationLayer, HardQuantizationThresholdRoundingLayer, HardQuantizationLayer, HardQuantizationThresholdLayer
 from models import MultiLayerPerceptron
-from datasets import get_minmax_thresholds
 
 
 def eval_val(model, val_loader, criterion = nn.MSELoss(), device = 'cuda'):
@@ -222,7 +221,7 @@ def train_soft_comp_mlp(architecture, min_values, max_values, thresholds,
     val_loss_soft_hard_thr_mlp = eval_val(model=model_soft_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
     return val_loss_soft_thr_mlp, val_loss_soft_hard_thr_mlp
 
-def train_hard_comp_mlp(architecture, min_values, max_values, thresholds,
+def train_hard_comp_mlp(architecture, minmax_thresholds, thresholds,
                     train_loader, val_loader,
                     num_epochs=100, learning_rate=0.001, weight_decay=0.0001,add_noise=False,
                     n_bits = 8, decrease_factor = 0.001, device='cuda'):
@@ -251,7 +250,6 @@ def train_hard_comp_mlp(architecture, min_values, max_values, thresholds,
 
     val_loss_hard_bitwise_quantile_mlp = eval_val(model=model_hard_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
     
-    minmax_thresholds = get_minmax_thresholds(min_values, max_values, n_bits)
     comp_thr_model = CompressionLayer(a_init = minmax_thresholds.flatten(),
                                   a_index = torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
                                   tau = 1)
