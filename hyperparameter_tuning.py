@@ -63,9 +63,8 @@ def random_search_soft_quantization_threshold(train_loader, val_loader,
     val_loss_soft_hard_mlp = None
     val_loss_soft_comp_mlp = None
     val_loss_soft_hard_comp_mlp = None
-    val_loss_hard_comp_mlp = None
 
-
+    results_df = pd.DataFrame()
     # Perform random search
     for f in tqdm(range(n_steps)):
         for key, value in optimize_dict.items():
@@ -183,24 +182,6 @@ def random_search_soft_quantization_threshold(train_loader, val_loader,
             os.remove(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_{f}steps{additional_name}.csv')
 
     return results_df
-
-# def load_data(datasetname, scratch):
-#     data_folder = scratch
-#     X_file = os.path.join(data_folder, datasetname + "X.npy")
-#     y_file = os.path.join(data_folder, datasetname + "Y.npy")
-#     # Check if the dataset already exists
-#     if os.path.exists(X_file) and os.path.exists(y_file):
-#         X = np.load(X_file, allow_pickle=True)
-#         y = np.load(y_file, allow_pickle=True)
-#     else:
-#         dataset = openml.datasets.get_dataset(dataset_id=datasetname, version=1)
-#         X, y,categorical_indicator, attribute_names= dataset.get_data(target=dataset.default_target_attribute)
-#         X = X.T[np.array(categorical_indicator) == False].T
-#         # Ensure the data folder exists
-#         os.makedirs(data_folder, exist_ok=True)
-#         np.save(X_file, X)
-#         np.save(y_file, y)
-#     return process_data(X, y)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process some input arguments.")
