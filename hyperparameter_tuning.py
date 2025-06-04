@@ -8,7 +8,7 @@ import argparse
 import os
 import numpy as np
 import openml
-
+from pathlib import Path
 def random_search_soft_quantization_threshold(train_loader, val_loader, 
                                               result_folder, dataset,  
                                               n_steps = 10, n_bits =8, num_features=8, optimize_dict = {}, device = 'cpu',
@@ -38,6 +38,14 @@ def random_search_soft_quantization_threshold(train_loader, val_loader,
     val_loss_soft_hard_comp_mlp_values = []
     val_loss_hard_bitwise_minmax_mlp_values = []
     val_loss_hard_bitwise_quantile_mlp_values = []
+
+    train_loss_mlp_values = []
+    train_loss_hard_pre_mlp_values = []
+    train_loss_hard_thr_pre_mlp_values = []
+    train_loss_soft_mlp_values = []
+    train_loss_soft_comp_mlp_values = []
+    train_loss_hard_bitwise_minmax_mlp_values = []
+    train_loss_hard_bitwise_quantile_mlp_values = []
 
     hyperparameter_dict = {
         'weight_decay': [],
@@ -85,31 +93,33 @@ def random_search_soft_quantization_threshold(train_loader, val_loader,
         hyperparameter_dict['hidden_neurons'].append(hidden_neurons)
         hyperparameter_dict['num_epochs'].append(num_epochs)
         hyperparameter_dict['decrease_factor'].append(decrease_factor)
+        # TODO Cross-validation or random split or kfold or something.
+        train_loss_mlp, train_loss_hard_thr_pre_mlp_mm, train_loss_hard_thr_pre_mlp_q, train_loss_soft, train_loss_soft_hard_comp = None, None, None, None, None
 
         if not only_additional:
             # Calculate losses for mlp model
-            val_loss_mlp, val_loss_hard_post_mlp, val_loss_hard_thr_post_mlp = train_mlp_model(train_loader=train_loader, val_loader=val_loader,
+            val_loss_mlp, val_loss_hard_post_mlp, val_loss_hard_thr_post_mlp, train_loss_mlp = train_mlp_model(train_loader=train_loader, val_loader=val_loader,
                 architecture=architecture, min_values=min_values, max_values=max_values, thresholds=thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                 n_bits=n_bits, device=device)
             
             # Calculate losses for pre-training quantization model
-            val_loss_hard_pre_mlp, val_loss_hard_thr_pre_mlp = train_mlp_pre_model(train_loader=train_loader, val_loader=val_loader, architecture=architecture, min_values=min_values, max_values=max_values, thresholds=thresholds,
+            val_loss_hard_pre_mlp, val_loss_hard_thr_pre_mlp, train_loss_hard_thr_pre_mlp_mm, train_loss_hard_thr_pre_mlp_q = train_mlp_pre_model(train_loader=train_loader, val_loader=val_loader, architecture=architecture, min_values=min_values, max_values=max_values, thresholds=thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                 n_bits=n_bits, device=device)
 
             # Calculate losses for quantization model
-            val_loss_soft_mlp, val_loss_soft_hard_mlp = train_soft_mlp(train_loader=train_loader, val_loader=val_loader, architecture=architecture, min_values=min_values, max_values=max_values, thresholds=thresholds,
+            val_loss_soft_mlp, val_loss_soft_hard_mlp, train_loss_soft = train_soft_mlp(train_loader=train_loader, val_loader=val_loader, architecture=architecture, min_values=min_values, max_values=max_values, thresholds=thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                 n_bits=n_bits, decrease_factor=decrease_factor, device=device)
 
             # Calculate losses for quantization model
-            val_loss_soft_comp_mlp, val_loss_soft_hard_comp_mlp = train_soft_comp_mlp(train_loader=train_loader, val_loader=val_loader, architecture=architecture, min_values=min_values, max_values=max_values, thresholds=thresholds,
+            val_loss_soft_comp_mlp, val_loss_soft_hard_comp_mlp, train_loss_soft_hard_comp = train_soft_comp_mlp(train_loader=train_loader, val_loader=val_loader, architecture=architecture, min_values=min_values, max_values=max_values, thresholds=thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                 n_bits=n_bits, decrease_factor=decrease_factor, device=device)
             
         # Calculate losses for hard quantization model
-        val_loss_hard_bitwise_minmax_mlp, val_loss_hard_bitwise_quantile_mlp = train_hard_comp_mlp(train_loader=train_loader, val_loader=val_loader, architecture=architecture, minmax_thresholds=minmax_thresholds, thresholds=thresholds,
+        val_loss_hard_bitwise_minmax_mlp, val_loss_hard_bitwise_quantile_mlp, train_loss_hard_bitwise_mm, train_loss_hard_bitwise_q = train_hard_comp_mlp(train_loader=train_loader, val_loader=val_loader, architecture=architecture, minmax_thresholds=minmax_thresholds, thresholds=thresholds,
                                                     num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                                                     n_bits=n_bits, decrease_factor=decrease_factor, device=device)
 
@@ -125,6 +135,14 @@ def random_search_soft_quantization_threshold(train_loader, val_loader,
         val_loss_hard_bitwise_minmax_mlp_values.append(val_loss_hard_bitwise_minmax_mlp)
         val_loss_hard_bitwise_quantile_mlp_values.append(val_loss_hard_bitwise_quantile_mlp)
 
+        train_loss_mlp_values.append(train_loss_mlp)
+        train_loss_hard_pre_mlp_values.append(train_loss_hard_thr_pre_mlp_mm)
+        train_loss_hard_thr_pre_mlp_values.append(train_loss_hard_thr_pre_mlp_q)
+        train_loss_soft_mlp_values.append(train_loss_soft)
+        train_loss_soft_comp_mlp_values.append(train_loss_soft_hard_comp)
+        train_loss_hard_bitwise_minmax_mlp_values.append(train_loss_hard_bitwise_mm)
+        train_loss_hard_bitwise_quantile_mlp_values.append(train_loss_hard_bitwise_q)
+
         losses_df = pd.DataFrame({
             'val_loss_mlp': val_loss_mlp_values,
             'val_loss_hard_post_mlp': val_loss_hard_post_mlp_values,
@@ -136,7 +154,14 @@ def random_search_soft_quantization_threshold(train_loader, val_loader,
             'val_loss_soft_comp_mlp': val_loss_soft_comp_mlp_values,
             'val_loss_soft_hard_comp_mlp': val_loss_soft_hard_comp_mlp_values,
             'val_loss_hard_bitwise_minmax_mlp': val_loss_hard_bitwise_minmax_mlp_values,
-            'val_loss_hard_bitwise_quantile_mlp': val_loss_hard_bitwise_quantile_mlp_values
+            'val_loss_hard_bitwise_quantile_mlp': val_loss_hard_bitwise_quantile_mlp_values,
+            'train_loss_mlp': train_loss_mlp_values,
+            'train_loss_hard_pre_mlp': train_loss_hard_pre_mlp_values,
+            'train_loss_hard_thr_pre_mlp': train_loss_hard_thr_pre_mlp_values,
+            'train_loss_soft_mlp': train_loss_soft_mlp_values,
+            'train_loss_soft_comp_mlp': train_loss_soft_comp_mlp_values,
+            'train_loss_hard_bitwise_minmax_mlp': train_loss_hard_bitwise_minmax_mlp_values,
+            'train_loss_hard_bitwise_quantile_mlp': train_loss_hard_bitwise_quantile_mlp_values
         })
 
         # Create DataFrame with results
@@ -147,7 +172,11 @@ def random_search_soft_quantization_threshold(train_loader, val_loader,
         if only_additional:
             additional_name = f'_additional'
         else:
-            additional_name = ''    
+            additional_name = ''
+
+        folder = Path(f'{result_folder}')
+        folder.mkdir(parents=True, exist_ok=True)
+
         results_df.to_csv(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_{f+1}steps{additional_name}.csv', index=False)
         # Delete the intermediate CSV file
         if f > 0:

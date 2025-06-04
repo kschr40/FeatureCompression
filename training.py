@@ -63,6 +63,7 @@ def train_model(model: nn.Module,
             param.requires_grad = False
     factor = decrease_factor ** (1/num_epochs)
     best_val_loss = float('inf')
+    train_loss = 0
     for epoch in range(num_epochs):
         losses = []
         for x, y in train_loader:
@@ -76,6 +77,7 @@ def train_model(model: nn.Module,
             loss.backward()
             optimizer.step()
             losses.append(loss.item())
+        train_loss = np.mean(losses)
         if has_quantization_layer:
             model[0].tau = max(model[0].tau * factor, 0.0001)
             # model.set_tau(max(model.quantization_layer.tau * factor, 0.001))
@@ -86,7 +88,7 @@ def train_model(model: nn.Module,
             best_val_loss = val_loss
             best_val_epoch = epoch
             best_model = model.state_dict()
-    return best_val_loss
+    return best_val_loss, train_loss
 
 
 ## Training specific models
@@ -101,11 +103,12 @@ def train_mlp_model(architecture, min_values, max_values, thresholds,
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     
-    best_val_loss = train_model(model, num_epochs=num_epochs,
+    best_val_loss, loss_training_last_epoch = train_model(model, num_epochs=num_epochs,
                 train_loader=train_loader, val_loader=val_loader,
                 optimizer=optimizer, criterion=criterion, has_quantization_layer=False,
                 train_quantization_layer=False, print_result=False,
                 add_noise=add_noise, device=device)
+
     
     quantization_model = HardQuantizationLayer(n_bits=n_bits, min_values=min_values, max_values=max_values)
     quantization_thr_model = HardQuantizationThresholdRoundingLayer(thresholds=thresholds)
@@ -119,7 +122,7 @@ def train_mlp_model(architecture, min_values, max_values, thresholds,
     val_loss_mlp = eval_val(model=model, val_loader=val_loader, criterion=criterion, device=device)
     val_loss_hard_post_mlp = eval_val(model=model_hard_post_mlp, val_loader=val_loader, criterion=criterion, device=device)
     val_loss_hard_thr_post_mlp = eval_val(model=model_hard_thr_post_mlp, val_loader=val_loader, criterion=criterion, device=device)
-    return val_loss_mlp, val_loss_hard_post_mlp, val_loss_hard_thr_post_mlp
+    return val_loss_mlp, val_loss_hard_post_mlp, val_loss_hard_thr_post_mlp, loss_training_last_epoch
     
 
 
@@ -140,7 +143,7 @@ def train_mlp_pre_model(architecture, min_values, max_values, thresholds,
 
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model_hard_pre_mlp.parameters(), lr=learning_rate, weight_decay=weight_decay)
-    best_val_loss_hard_pre_mlp = train_model(model_hard_pre_mlp, num_epochs=num_epochs,
+    best_val_loss_hard_pre_mlp, loss_training_last_epoch_mm = train_model(model_hard_pre_mlp, num_epochs=num_epochs,
                 train_loader=train_loader, val_loader=val_loader,
                 optimizer=optimizer, criterion=criterion, has_quantization_layer=False,
                 train_quantization_layer=False, print_result=False,
@@ -150,14 +153,14 @@ def train_mlp_pre_model(architecture, min_values, max_values, thresholds,
 
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model_hard_pre_thr_mlp.parameters(), lr=learning_rate, weight_decay=weight_decay)
-    best_val_loss_hard_pre_thr_mlp = train_model(model_hard_pre_thr_mlp, num_epochs=num_epochs,
+    best_val_loss_hard_pre_thr_mlp, loss_training_last_epoch_q = train_model(model_hard_pre_thr_mlp, num_epochs=num_epochs,
                 train_loader=train_loader, val_loader=val_loader,
                 optimizer=optimizer, criterion=criterion, has_quantization_layer=False,
                 train_quantization_layer=False, print_result=False,
                 add_noise=add_noise, device=device)
     
     val_loss_hard_pre_thr_mlp = eval_val(model=model_hard_pre_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
-    return val_loss_hard_pre_mlp, val_loss_hard_pre_thr_mlp
+    return val_loss_hard_pre_mlp, val_loss_hard_pre_thr_mlp, loss_training_last_epoch_mm, loss_training_last_epoch_q
 
 def train_soft_mlp(architecture, min_values, max_values, thresholds,
                     train_loader, val_loader,
@@ -177,7 +180,7 @@ def train_soft_mlp(architecture, min_values, max_values, thresholds,
 
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model_soft_mlp.parameters(), lr=learning_rate, weight_decay=weight_decay)
-    best_val_loss = train_model(model_soft_mlp, num_epochs=num_epochs,
+    best_val_loss, loss_training_last_epoch = train_model(model_soft_mlp, num_epochs=num_epochs,
                 train_loader=train_loader, val_loader=val_loader,
                 optimizer=optimizer, criterion=criterion, has_quantization_layer=True,
                 train_quantization_layer=True, print_result=False, decrease_factor=decrease_factor,
@@ -189,7 +192,7 @@ def train_soft_mlp(architecture, min_values, max_values, thresholds,
     val_loss_soft_mlp = eval_val(model=model_soft_mlp, val_loader=val_loader, criterion=criterion, device=device)
     val_loss_soft_hard_mlp = eval_val(model=model_soft_hard_mlp, val_loader=val_loader, criterion=criterion, device=device)
 
-    return val_loss_soft_mlp, val_loss_soft_hard_mlp
+    return val_loss_soft_mlp, val_loss_soft_hard_mlp, loss_training_last_epoch
 
 def train_soft_comp_mlp(architecture, min_values, max_values, thresholds,
                     train_loader, val_loader,
@@ -210,7 +213,7 @@ def train_soft_comp_mlp(architecture, min_values, max_values, thresholds,
 
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model_soft_thr_mlp.parameters(), lr=learning_rate, weight_decay=weight_decay)
-    best_val_loss = train_model(model_soft_thr_mlp, num_epochs=num_epochs,
+    best_val_loss, loss_training_last_epoch = train_model(model_soft_thr_mlp, num_epochs=num_epochs,
                 train_loader=train_loader, val_loader=val_loader,
                 optimizer=optimizer, criterion=criterion,has_quantization_layer=True,
                 train_quantization_layer=True, print_result=False, decrease_factor=decrease_factor,
@@ -219,7 +222,7 @@ def train_soft_comp_mlp(architecture, min_values, max_values, thresholds,
     val_loss_soft_thr_mlp = eval_val(model=model_soft_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
     comp_model.set_round_quantization(True)   
     val_loss_soft_hard_thr_mlp = eval_val(model=model_soft_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
-    return val_loss_soft_thr_mlp, val_loss_soft_hard_thr_mlp
+    return val_loss_soft_thr_mlp, val_loss_soft_hard_thr_mlp, loss_training_last_epoch
 
 def train_hard_comp_mlp(architecture, minmax_thresholds, thresholds,
                     train_loader, val_loader,
@@ -242,7 +245,7 @@ def train_hard_comp_mlp(architecture, minmax_thresholds, thresholds,
 
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model_hard_thr_mlp.parameters(), lr=learning_rate, weight_decay=weight_decay)
-    best_val_loss = train_model(model_hard_thr_mlp, num_epochs=num_epochs,
+    best_val_loss, loss_training_last_epoch_mm = train_model(model_hard_thr_mlp, num_epochs=num_epochs,
                 train_loader=train_loader, val_loader=val_loader,
                 optimizer=optimizer, criterion=criterion,has_quantization_layer=True,
                 train_quantization_layer=True, print_result=False, decrease_factor=decrease_factor,
@@ -262,7 +265,7 @@ def train_hard_comp_mlp(architecture, minmax_thresholds, thresholds,
 
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model_hard_thr_mlp.parameters(), lr=learning_rate, weight_decay=weight_decay)
-    best_val_loss = train_model(model_hard_thr_mlp, num_epochs=num_epochs,
+    best_val_loss, loss_training_last_epoch_q = train_model(model_hard_thr_mlp, num_epochs=num_epochs,
                 train_loader=train_loader, val_loader=val_loader,
                 optimizer=optimizer, criterion=criterion,has_quantization_layer=True,
                 train_quantization_layer=True, print_result=False, decrease_factor=decrease_factor,
@@ -270,4 +273,4 @@ def train_hard_comp_mlp(architecture, minmax_thresholds, thresholds,
     
     val_loss_hard_bitwise_minmax_mlp = eval_val(model=model_hard_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
 
-    return val_loss_hard_bitwise_minmax_mlp, val_loss_hard_bitwise_quantile_mlp
+    return val_loss_hard_bitwise_minmax_mlp, val_loss_hard_bitwise_quantile_mlp, loss_training_last_epoch_mm, loss_training_last_epoch_q
