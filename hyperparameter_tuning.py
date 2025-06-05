@@ -117,7 +117,6 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             hyperparameter_dict['hidden_neurons'].append(hidden_neurons)
             hyperparameter_dict['num_epochs'].append(num_epochs)
             hyperparameter_dict['decrease_factor'].append(decrease_factor)
-            train_loss_mlp, train_loss_hard_thr_pre_mlp_mm, train_loss_hard_thr_pre_mlp_q, train_loss_soft, train_loss_soft_hard_comp = None, None, None, None, None
 
             # Calculate losses for mlp model
             val_loss_mlp, val_loss_hard_post_mlp, val_loss_hard_thr_post_mlp, train_loss_mlp = train_mlp_model(train_loader=train_loader, val_loader=val_loader,

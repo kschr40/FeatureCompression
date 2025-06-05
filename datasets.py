@@ -87,6 +87,8 @@ def load_data(datasetname, scratch, splitdata=True):
         dataset = openml.datasets.get_dataset(dataset_id=datasetname, version=1)
         X, y, categorical_indicator, attribute_names = dataset.get_data(target=dataset.default_target_attribute)
         X = X.T[np.array(categorical_indicator) == False].T
+        X = X.values
+        y = y.values
         # Ensure the data folder exists
         os.makedirs(data_folder, exist_ok=True)
         np.save(X_file, X)
