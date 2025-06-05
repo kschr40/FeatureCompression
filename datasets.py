@@ -42,7 +42,7 @@ def get_min_max_values(train_loader, num_features):
         max_values = torch.max(max_values, inputs.max(dim=0).values)
     return min_values, max_values
 
-def process_data(X,y, batch_size = 64, random_state= None):
+def split_data(X,y, random_state= None):
     # Split the data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=random_state)
     # Further split training data into train and validation sets
@@ -52,7 +52,9 @@ def process_data(X,y, batch_size = 64, random_state= None):
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
     X_val = scaler.transform(X_val)
+    return X_train, y_train, X_test, y_test, X_val, y_val
 
+def convert_to_tensor(X_train, y_train, X_test, y_test, X_val, y_val, batch_size=64):
     # Convert the data to PyTorch tensors
     X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
     y_train_tensor = torch.tensor(y_train, dtype=torch.float32).unsqueeze(1)  # Add an extra dimension for regression
@@ -73,7 +75,7 @@ def process_data(X,y, batch_size = 64, random_state= None):
     return train_loader, val_loader, test_loader
 
 
-def load_data(datasetname, scratch):
+def load_data(datasetname, scratch, splitdata=True):
     data_folder = scratch
     X_file = os.path.join(data_folder, datasetname + "X.npy")
     y_file = os.path.join(data_folder, datasetname + "Y.npy")
@@ -83,10 +85,17 @@ def load_data(datasetname, scratch):
         y = np.load(y_file, allow_pickle=True)
     else:
         dataset = openml.datasets.get_dataset(dataset_id=datasetname, version=1)
-        X, y,categorical_indicator, attribute_names= dataset.get_data(target=dataset.default_target_attribute)
+        X, y, categorical_indicator, attribute_names = dataset.get_data(target=dataset.default_target_attribute)
         X = X.T[np.array(categorical_indicator) == False].T
         # Ensure the data folder exists
         os.makedirs(data_folder, exist_ok=True)
         np.save(X_file, X)
         np.save(y_file, y)
-    return process_data(X, y)
+    if splitdata:
+        X_train, y_train, X_test, y_test, X_val, y_val = split_data(X, y)
+        return convert_to_tensor(X_train, y_train, X_test, y_test, X_val, y_val)
+    else:
+        return torch.tensor(X, dtype=torch.float32), torch.tensor(y, dtype=torch.float32).unsqueeze(1)
+
+
+
