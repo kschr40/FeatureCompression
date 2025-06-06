@@ -21,15 +21,15 @@ def train_and_evaluate_best_models_multiple_bits(csv_folder,
         csv_path = join(csv_folder, f'{dataset}_hyperparameter_tuning_{n_bits}bits_{n_steps}steps_extended{n_steps}.csv')
         df = pd.read_csv(csv_path)
         loss_columns = [col for col in df.columns if 'loss' in col]
-        min_values, max_values = get_min_max_values(train_loader, num_features)
-        thresholds = get_quantization_thresholds(train_loader, n_bits)
-        minmax_thresholds = get_minmax_thresholds(min_values, max_values, n_bits)
         result_dict = {}
         for col in loss_columns:
             result_dict[col] = []
 
         for f in tqdm(range(n_runs)):
             train_loader, val_loader, test_loader = load_data(dataset, scratch)
+            min_values, max_values = get_min_max_values(train_loader, num_features)
+            thresholds = get_quantization_thresholds(train_loader, n_bits)
+            minmax_thresholds = get_minmax_thresholds(min_values, max_values, n_bits)
             for column in loss_columns:
                 df.sort_values(by=column, ascending=True, inplace=True)
                 best_weight_decay = df['weight_decay'].values[0]
@@ -106,9 +106,9 @@ def train_and_evaluate_best_models_multiple_bits(csv_folder,
                     elif column == 'val_loss_hard_bitwise_quantile_mlp':
                         result_dict['val_loss_hard_bitwise_quantile_mlp'].append(val_loss_hard_bitwise_quantile_mlp)        
             results_df = pd.DataFrame(result_dict) 
-            results_df.to_csv(join(result_folder, f'{dataset}_best_models__{n_bits}bits_{f+1}runs_ext.csv'), index=False)
+            results_df.to_csv(join(result_folder, f'{dataset}_best_models_{n_bits}bits_{f+1}runs_ext.csv'), index=False)
             if f > 0:
-                os.remove(join(result_folder, f'{dataset}_best_models__{n_bits}bits_{f}runs_ext.csv'))
+                os.remove(join(result_folder, f'{dataset}_best_models_{n_bits}bits_{f}runs_ext.csv'))
     return results_df
 
 
