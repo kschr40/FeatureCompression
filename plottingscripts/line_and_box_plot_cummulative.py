@@ -97,7 +97,20 @@ for data in datasets:
         ylim = (0.4, 1.1)
     else:
         ylim = (0, 1.5)
-    dfsubset.plot(x='bits', y=loss_columns, kind='line', marker='o', ax=ax[counter], legend=legend, ylim=ylim, fontsize=22)
+    leftoverlines = ['Post minmaxQ', 'Post quantileQ', 'Pre minmaxQ', 'Pre quantileQ']
+    softq = ['SoftQ', 'Bitwise softQ']
+    hardq = ['HardQ', 'Bitwise hardQ']
+    full_precision = ['Full precision']
+    viridis = plt.colormaps['viridis']
+    colors = [viridis(i) for i in np.linspace(0, 1, 9)]
+    dfsubset.plot(x='bits', y=leftoverlines, kind='line', linestyle='--', marker='o', ax=ax, legend=legend, ylim=ylim,
+                  fontsize=22, color=colors[0:4])
+    dfsubset.plot(x='bits', y=full_precision, color='r', kind='line', marker='o', ax=ax, legend=legend, ylim=ylim,
+                  fontsize=22)
+    dfsubset.plot(x='bits', y=softq, kind='line', linestyle='-.', marker='o', ax=ax, legend=legend, ylim=ylim,
+                  fontsize=22, color=[colors[5], colors[7]])
+    dfsubset.plot(x='bits', y=hardq, kind='line', linestyle=':', marker='o', ax=ax, legend=legend, ylim=ylim,
+                  fontsize=22, color=[colors[6], colors[8]])
     ax[counter].set_xlabel('Bits')
     ax[counter].set_ylabel('MSE Loss')
     ax[counter].set_xticks(np.arange(2, 9, step=1))
