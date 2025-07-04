@@ -6,8 +6,8 @@ from tqdm import tqdm
 from training import train_mlp_model, train_mlp_pre_model, train_soft_mlp, train_soft_comp_mlp, train_hard_comp_mlp
 import argparse
 import os
-import numpy as np
-import openml
+import re
+import glob
 from pathlib import Path
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold
@@ -57,7 +57,17 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
 
     results_df = pd.DataFrame()
     # Perform random search
-    for f in tqdm(range(n_steps)):
+    start = 0
+    filenames = glob.glob(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_*')
+    for filename in filenames:
+        storage_match = re.search(r'bits_(\d+)steps.csv', filename)
+        if storage_match.group(1) is not None:
+            if int(storage_match.group(1)) > start:
+                start = int(storage_match.group(1))
+    if start > 0:
+        previousdata = pd.read_csv(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_{start}steps.csv')
+        results_df = pd.concat([results_df, previousdata], axis=0)
+    for f in tqdm(range(start, n_steps)):
         for key, value in optimize_dict.items():
             if key == 'weight_decay':
                 weight_decay = random.choice(value)
@@ -188,17 +198,20 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             })
 
             # Create DataFrame with results
-            results_df = pd.DataFrame(hyperparameter_dict)
-            results_df = pd.concat([results_df, losses_df], axis=1)
-
+            if results_df is None:
+                results_df = pd.DataFrame(hyperparameter_dict)
+                results_df = pd.concat([results_df, losses_df], axis=1)
+            else:
+                tmp = pd.DataFrame(hyperparameter_dict)
+                tmp = pd.concat([tmp, losses_df], axis=1)
+                results_df = pd.concat([results_df, tmp], ignore_index=True, axis=0)
             results_df = results_df.sort_values(['hyperparameter_setting_id', 'val_loss_mlp'])  # Sort by loss ascending
             folder = Path(f'{result_folder}')
             folder.mkdir(parents=True, exist_ok=True)
-
             results_df.to_csv(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_{f+1}steps.csv', index=False)
-            # Delete the intermediate CSV file
         if f > 0:
             os.remove(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_{f}steps.csv')
+        results_df = pd.DataFrame()
 
     return results_df
 
@@ -209,7 +222,7 @@ if __name__ == "__main__":
                         help='Number of iterations')
 
     parser.add_argument('--scratch', type=str, required=True,
-                        help='Number of iterations')
+                        help='directory to save the results to')
     parser.add_argument('--n_steps', type=int, default=2,
                         help='Number of iterations')
     parser.add_argument('--n_bits', type=int, default=4,
@@ -238,7 +251,7 @@ if __name__ == "__main__":
                     'num_epochs': [30,50,70],
                     'decrease_factor': [0.001, 0.0001]}
     
-    print(f"Running random search for {n_steps} steps with {n_bits} bits on dataset {dataset}")
+    print(f"Running random search for {n_steps} steps with {n_bits} bits on dataset {dataset} on device {device}")
 
     results_df_all = random_search_cv(X_tensor=X_tensor, y_tensor=y_tensor,
                                                             result_folder=result_folder,
