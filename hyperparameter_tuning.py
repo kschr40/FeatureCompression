@@ -12,6 +12,7 @@ from pathlib import Path
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold
 from torch.utils.data import DataLoader, TensorDataset
+from datetime import datetime
 
 def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_folder, dataset,
                                               n_steps = 10, n_bits =8, optimize_dict = {}, device = 'cpu', debug=False):
@@ -57,6 +58,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
 
     results_df = pd.DataFrame()
     # Perform random search
+    random.seed(datetime.now().timestamp())
     start = 0
     filenames = glob.glob(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_*')
     for filename in filenames:
