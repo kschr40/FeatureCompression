@@ -8,7 +8,6 @@ full_min_per_hyper = pd.DataFrame()
 full_avg_per_hyper = pd.DataFrame()
 lastname = ''
 for data in datasets:
-    # path = 'results/kFoldresults/' + f'{data}' + '/_evaluation_from_2_to_8bits_new.csv'
     path = f'results/raw_kFold_results/{data}/'
     bits = [2,3,4,5,6,7,8]
     for bit in bits:
@@ -31,5 +30,6 @@ for data in datasets:
                 os.replace(f"{path}/{name}", f"{path}/archive/{name}")
         df.drop_duplicates(inplace=True)
         if not df.empty:
+            df.sort_values(by=['hyperparameter_setting_id', 'weight_decay','learning_rate','hidden_layers','hidden_neurons','num_epochs','decrease_factor', 'kFold_id'], ascending=True, inplace=True)
             df.to_csv(f'{path}/{lastname}', sep=',', index=False, header=True)
 
