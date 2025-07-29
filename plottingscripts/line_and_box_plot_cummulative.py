@@ -26,6 +26,7 @@ def initialize_figures(num_figures: int, layout: str, line: bool = False):
         fig, axes = plt.subplots(1, num_figures, figsize=((7 * num_figures), 7/1.5), dpi=1000)
     return fig, axes
 
+# Makes a lineplot for the best hyperparameter setup found. (Figure 4)
 def make_lineplot(layout: str):
     counter = 0
     fig, axes = initialize_figures(num_figures_box, layout, True)
@@ -112,6 +113,7 @@ def make_lineplot(layout: str):
     #plt.show()
     plt.close(fig)
 
+# Makes a boxplot over all data points collected.
 def make_boxplot(layout: str):
     bits = [2, 3, 4, 5, 6, 7, 8]
     for bit in bits:
@@ -174,6 +176,7 @@ def make_boxplot(layout: str):
         fig.savefig(f'plottingscripts/figures/boxplot/{bit}_{layout}_all_boxplot.pdf', bbox_inches='tight')
         plt.close(fig)
 
+# Makes a boxplot for the best hyperparameter setup found. (Figure 5 - 4bit)
 def make_boxplotbest(layout:str):
     bits = [2, 3, 4, 5, 6, 7, 8]
     for bit in bits:
