@@ -207,6 +207,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
                 tmp = pd.DataFrame(hyperparameter_dict)
                 tmp = pd.concat([tmp, losses_df], axis=1)
                 results_df = pd.concat([results_df, tmp], ignore_index=True, axis=0)
+            results_df.drop_duplicates(inplace=True)
             results_df = results_df.sort_values(['hyperparameter_setting_id', 'val_loss_mlp'])  # Sort by loss ascending
             folder = Path(f'{result_folder}')
             folder.mkdir(parents=True, exist_ok=True)
