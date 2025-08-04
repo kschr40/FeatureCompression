@@ -89,7 +89,10 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
                 decrease_factor = random.choice(value)
             else:
                 raise ValueError(f"Unknown hyperparameter: {key}")
-        k_folds = 5
+
+        k_folds = 10
+        if debug:
+            k_folds = 2
         kfold = KFold(n_splits=k_folds, shuffle=True, random_state=42)
         counter = 0
         for fold, (train_idx, val_idx) in enumerate(kfold.split(X_tensor)):
