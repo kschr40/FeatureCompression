@@ -96,6 +96,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             hyperparameter_setting_id.append(f)
             kFold_id.append(counter)
             counter += 1
+            # Preprocess data
             X_train_tensor = X_tensor[train_idx]
             y_train_tensor = y_tensor[train_idx]
             X_val_tensor = X_tensor[val_idx]
@@ -141,17 +142,17 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                 n_bits=n_bits, device=device)
 
-            # Calculate losses for quantization model
+            # Calculate losses for soft quantization model
             val_loss_soft_mlp, val_loss_soft_hard_mlp, train_loss_soft = train_soft_mlp(train_loader=train_loader, val_loader=val_loader, architecture=architecture, min_values=min_values, max_values=max_values, thresholds=thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                 n_bits=n_bits, decrease_factor=decrease_factor, device=device)
 
-            # Calculate losses for quantization model
+            # Calculate losses for bitwise soft quantization model
             val_loss_soft_comp_mlp, val_loss_soft_hard_comp_mlp, train_loss_soft_hard_comp = train_soft_comp_mlp(train_loader=train_loader, val_loader=val_loader, architecture=architecture, min_values=min_values, max_values=max_values, thresholds=thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                 n_bits=n_bits, decrease_factor=decrease_factor, device=device)
 
-            # Calculate losses for hard quantization model
+            # Calculate losses for scalar, resp. bitwise, minmax, resp. quantile, quantization model
             val_loss_hard_bitwise_minmax_mlp, val_loss_hard_bitwise_quantile_mlp, train_loss_hard_bitwise_mm, train_loss_hard_bitwise_q = train_hard_comp_mlp(train_loader=train_loader, val_loader=val_loader, architecture=architecture, minmax_thresholds=minmax_thresholds, thresholds=thresholds,
                                                         num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                                                         n_bits=n_bits, decrease_factor=decrease_factor, device=device)
@@ -252,7 +253,7 @@ if __name__ == "__main__":
                     'hidden_layers': [5,6,8,10],
                     'hidden_neurons': [64,128,256,512,1024, 2048, 4096, 8192],
                     'num_epochs': [30,50,70],
-                    'decrease_factor': [0.001, 0.0001]}
+                    'decrease_factor': [0.001, 0.0001]} ## Search Space for Hyperparameter Tuning, see Appendix F, Table 3
     
     print(f"Running random search for {n_steps} steps with {n_bits} bits on dataset {dataset} on device {device}")
 
