@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import re
 
-datasets = ['california', 'cpu_act', 'fried', 'sulfur', 'superconduct', 'wine'] # "NewFuelCar" "superconduct"]
+datasets = ['california', 'cpu_act', 'fried', 'sulfur', 'superconduct', 'wine']
 fulldataset = pd.DataFrame()
 full_min_per_hyper = pd.DataFrame()
 full_avg_per_hyper = pd.DataFrame()

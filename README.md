@@ -21,11 +21,12 @@ Other software versions might also work but are not tested. Only compatible with
 3. Use your favorite tool to execute multiple experiments (e.g. bash with bit as parameter). Note that experiments might run for several days for a bit and single dataset configuration. In case you want to test a small run add the `--debug` flag (reduces the hidden_neurons to 10). 
 ```bash
 datasets=("california" "cpu_act"  "fried"  "sulfur"  "superconduct"  "wine_quality")
-num_bits=$4
 timestamp=$(date +%s)
-
+for i in {2..8}; do
+num_bits=$i
 for dataset in "${datasets[@]}"; do
 python3 hyperparameter_tuning.py --dataset $dataset --n_bits $num_bits --n_steps 50 --scratch {folder where data can be stored} --result_folder {folder where results should be stored} > {file for output}
+done
 done
 ```
 4. Results are stored for each step, with the naming scheme `{datasetname}_hyperparameter_tuning_{nbits}bits_{stepsdone}steps.csv`
