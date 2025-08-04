@@ -84,10 +84,7 @@ def load_data(datasetname, scratch, splitdata=True):
         X = np.load(X_file, allow_pickle=True)
         y = np.load(y_file, allow_pickle=True)
     else:
-        if datasetname == 'california':
-            dataset = openml.datasets.get_dataset(dataset_id=datasetname, version=3)
-        else:
-            dataset = openml.datasets.get_dataset(dataset_id=datasetname, version=1)
+        dataset = openml.datasets.get_dataset(dataset_id=datasetname, version=1)
         X, y, categorical_indicator, attribute_names = dataset.get_data(target=dataset.default_target_attribute)
         X = X.T[np.array(categorical_indicator) == False].T
         X = X.values
