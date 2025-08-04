@@ -21,7 +21,7 @@ Other software versions might also work but are not tested. Only compatible with
 3. Use your favorite tool to execute multiple experiments (e.g. bash with bit as parameter). Note that experiments might run for several days for a bit and single dataset configuration. In case you want to test a small run add the `--debug` flag (reduces the hidden_neurons to 10). 
 ```bash
 datasets=("california" "cpu_act"  "fried"  "sulfur"  "superconduct"  "wine_quality")
-num_bits=$1
+num_bits=$4
 timestamp=$(date +%s)
 
 for dataset in "${datasets[@]}"; do

@@ -4,7 +4,7 @@ import torch.nn as nn
 from typing import Union, List
 
 class CompressionLayer(nn.Module):
-    """Layer that compresses the input by thresholding the input at a given threshold. Per feature, multiple outputs in (0,1) are generated.
+    """Bitwise Soft Quantization Layer. Layer compresses the input by thresholding the input at a given threshold. Per feature, multiple outputs in (0,1) are generated.
     """
     def __init__(self, a_init: torch.Tensor, a_index: torch.Tensor, tau: float = 1.):
         """Initialize the compression layer.
@@ -38,14 +38,14 @@ class CompressionLayer(nn.Module):
         Returns:
             torch.Tensor: Compressed tensor, shape [B, num_thresholds]
         """
-        y = nn.Sigmoid()((x[:,self.a_index]-self.a) / self.tau)
+        y = nn.Sigmoid()((x[:,self.a_index]-self.a) / self.tau) ## Calculation of Bitwise Soft Quantization for multiple Inputs
         if round_quantization or self.round_quantization:
             y = torch.round(y)
         return y
     
 
 class QuantizationLayer(nn.Module):
-    """Layer that quantizes the input using learnable thresholds and a sigmoid function as approximation for step function. Per features, a single output in (0, n_thresholds_per_feature) are generated.
+    """Soft Quantization Layer. Layer that quantizes the input using learnable thresholds and a sigmoid function as approximation for step function. Per features, a single output in (0, n_thresholds_per_feature) are generated.
     """
     def __init__(self, num_features: int, num_thresholds_per_feature: Union[int, List[int]], tau: float = 1.):
         """Initialize the quantization layer.
@@ -89,19 +89,20 @@ class QuantizationLayer(nn.Module):
             torch.Tensor: Quantized tensor, shape [B, num_features]
         """
         if isinstance(self.thresholds, nn.ParameterList):
+            # Varying number of thresholds per feature
             for f in range(self.num_features):
-                x[:,f] = torch.sigmoid((x[:,f]-self.thresholds[f]) / self.tau)
+                x[:,f] = torch.sum(torch.sigmoid((x[:,f]-self.thresholds[f]) / self.tau), dim = 1)
         else:
+            # Constant number of thresholds per feature
             x = torch.sigmoid((x[:,:,None]-self.thresholds[None,:]) / self.tau)
-            x = torch.sum(x, dim = 2)   
+            x = torch.sum(x, dim = 2)  #Soft Quantization = Sum of Bitwise Soft Quantization    
         if round_quantization:
             x = torch.round(x)
         return x    
     
-
                     
 class HardQuantizationLayer(nn.Module):
-    """A layer that quantizes inputs into n_bits bits using hard thresholding."""
+    """Minmax Quantization Layer. A layer that quantizes inputs into n_bits bits using minmax thresholding."""
     def __init__(self, n_bits: int, min_values: torch.tensor, max_values: torch.tensor):
         """Initialize the hard quantization layer.
         
@@ -133,14 +134,15 @@ class HardQuantizationLayer(nn.Module):
             x = torch.clamp(x, 0, 1)
             
             # Quantize to n_bits
-            x = torch.round(x * (self.n_levels - 1)) / (self.n_levels - 1)
+            x = torch.round(x * (self.n_levels - 1)) / (self.n_levels - 1) ## Encoded values, see Appendix A for details.
             
             # Scale back to original range
-            x = x * self.range + self.min_values
+            x = x * self.range + self.min_values ## Decoded values, i.e. quantized values, according to Equation (1). Details in Appendix A.
         
         return x
 
 class HardQuantizationThresholdLayer(nn.Module):
+    """ Quantization Layer that performs Encoding via Thresholds and Identity for Decoding."""
     def __init__(self, thresholds:torch.Tensor):
         """Initialize the hard quantization threshold layer.
         
@@ -162,11 +164,12 @@ class HardQuantizationThresholdLayer(nn.Module):
         x = x.unsqueeze(-1)  # Add a dimension for broadcasting
         # Compare x with thresholds
         x = (x > self.thresholds.unsqueeze(0)).float() ## Shape [B, num_features, num_thresholds]   
-        # Sum along the threshold dimension to get the final quantized values
+        # Sum along the threshold dimension to get the final quantized values (also equals encoded values, See Section Encoding Function via Thresholds)
         x = torch.sum(x, dim=-1)  # Shape [B, num_features]
         return x
 
 class HardQuantizationThresholdRoundingLayer(nn.Module):
+    """ Quantization Layer that performs Encoding via Thresholds and set quantized values in middle of the intervals between consecutive thresholds."""
     def __init__(self, thresholds:torch.Tensor):
         """Initialize the hard quantization threshold layer.
         
@@ -185,12 +188,14 @@ class HardQuantizationThresholdRoundingLayer(nn.Module):
         Returns:
             torch.Tensor: Quantized tensor, shape [B, num_features]
         """
+        # Auxiliary thresholds are added and quantized values are computed
         thresholds = self.thresholds
         thresholds_diffs = torch.diff(thresholds) 
         thresholds_diffs = torch.cat([-thresholds_diffs[:,0:1], thresholds_diffs, thresholds_diffs[:,-1:]], dim=1)
         thresholds = torch.cat([thresholds[:,0:1], thresholds], dim=1)
-        thresholds_rounded = thresholds + thresholds_diffs/2 # Shape [num_features, num_thresholds+1]
+        thresholds_rounded = thresholds + thresholds_diffs/2 # Shape [num_features, num_thresholds+1] ## Rounded thresholds equal quantized values, see Equation (1)
 
+        # Calculate the correct quantized values - only calculation of indexes is left
         x = x.unsqueeze(-1)  # Add a dimension for broadcasting
         # Compare x with thresholds
         x = (x > self.thresholds.unsqueeze(0)).float() ## Shape [B, num_features, num_thresholds]   
