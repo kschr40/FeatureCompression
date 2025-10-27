@@ -1,8 +1,9 @@
 import torch
 import numpy as np
 import torch.nn as nn
+import time
 
-from layers import CompressionLayer, QuantizationLayer, HardQuantizationThresholdRoundingLayer, HardQuantizationLayer, HardQuantizationThresholdLayer
+from layers import CompressionLayer, QuantizationLayer, HardQuantizationThresholdRoundingLayer, HardQuantizationLayer, HardQuantizationThresholdLayer, quant_lookup_layer, LsqQuanTranspose
 from models import MultiLayerPerceptron
 
 
@@ -19,7 +20,7 @@ def eval_val(model, val_loader, criterion = nn.MSELoss(), device = 'cuda'):
         _type_: _description_
     """
     with torch.no_grad():
-        model.eval()
+        # model.eval()
         losses = []
         for x, y in val_loader:
             x = x.to(device)
@@ -103,12 +104,14 @@ def train_mlp_model(architecture, min_values, max_values, thresholds,
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     
+    start = time.perf_counter()
     best_val_loss, loss_training_last_epoch = train_model(model, num_epochs=num_epochs,
                 train_loader=train_loader, val_loader=val_loader,
                 optimizer=optimizer, criterion=criterion, has_quantization_layer=False,
                 train_quantization_layer=False, print_result=False,
                 add_noise=add_noise, device=device)
-
+    end = time.perf_counter()
+    elapsed_time = end - start
     
     quantization_model = HardQuantizationLayer(n_bits=n_bits, min_values=min_values, max_values=max_values)
     quantization_thr_model = HardQuantizationThresholdRoundingLayer(thresholds=thresholds)
@@ -122,7 +125,7 @@ def train_mlp_model(architecture, min_values, max_values, thresholds,
     val_loss_mlp = eval_val(model=model, val_loader=val_loader, criterion=criterion, device=device)
     val_loss_hard_post_mlp = eval_val(model=model_hard_post_mlp, val_loader=val_loader, criterion=criterion, device=device)
     val_loss_hard_thr_post_mlp = eval_val(model=model_hard_thr_post_mlp, val_loader=val_loader, criterion=criterion, device=device)
-    return val_loss_mlp, val_loss_hard_post_mlp, val_loss_hard_thr_post_mlp, loss_training_last_epoch
+    return val_loss_mlp, val_loss_hard_post_mlp, val_loss_hard_thr_post_mlp, loss_training_last_epoch, elapsed_time
     
 
 
@@ -143,11 +146,15 @@ def train_mlp_pre_model(architecture, min_values, max_values, thresholds,
 
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model_hard_pre_mlp.parameters(), lr=learning_rate, weight_decay=weight_decay)
+
+    start = time.perf_counter()
     best_val_loss_hard_pre_mlp, loss_training_last_epoch_mm = train_model(model_hard_pre_mlp, num_epochs=num_epochs,
                 train_loader=train_loader, val_loader=val_loader,
                 optimizer=optimizer, criterion=criterion, has_quantization_layer=False,
                 train_quantization_layer=False, print_result=False,
                 add_noise=add_noise, device=device)
+    end = time.perf_counter()
+    elapsed_time = end - start
     
     val_loss_hard_pre_mlp = eval_val(model=model_hard_pre_mlp, val_loader=val_loader, criterion=criterion, device=device)
 
@@ -160,7 +167,7 @@ def train_mlp_pre_model(architecture, min_values, max_values, thresholds,
                 add_noise=add_noise, device=device)
     
     val_loss_hard_pre_thr_mlp = eval_val(model=model_hard_pre_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
-    return val_loss_hard_pre_mlp, val_loss_hard_pre_thr_mlp, loss_training_last_epoch_mm, loss_training_last_epoch_q
+    return val_loss_hard_pre_mlp, val_loss_hard_pre_thr_mlp, loss_training_last_epoch_mm, loss_training_last_epoch_q, elapsed_time
 
 def train_soft_mlp(architecture, min_values, max_values, thresholds,
                     train_loader, val_loader,
@@ -180,11 +187,15 @@ def train_soft_mlp(architecture, min_values, max_values, thresholds,
 
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model_soft_mlp.parameters(), lr=learning_rate, weight_decay=weight_decay)
+
+    start = time.perf_counter()
     best_val_loss, loss_training_last_epoch = train_model(model_soft_mlp, num_epochs=num_epochs,
                 train_loader=train_loader, val_loader=val_loader,
                 optimizer=optimizer, criterion=criterion, has_quantization_layer=True,
                 train_quantization_layer=True, print_result=False, decrease_factor=decrease_factor,
                 add_noise=add_noise, device=device)
+    end = time.perf_counter()
+    elapsed_time = end - start
     
     quantization_thr_model = HardQuantizationThresholdLayer(thresholds=quantization_model.thresholds)
     model_soft_hard_mlp = nn.Sequential(quantization_thr_model, mlp)
@@ -192,7 +203,7 @@ def train_soft_mlp(architecture, min_values, max_values, thresholds,
     val_loss_soft_mlp = eval_val(model=model_soft_mlp, val_loader=val_loader, criterion=criterion, device=device)
     val_loss_soft_hard_mlp = eval_val(model=model_soft_hard_mlp, val_loader=val_loader, criterion=criterion, device=device)
 
-    return val_loss_soft_mlp, val_loss_soft_hard_mlp, loss_training_last_epoch
+    return val_loss_soft_mlp, val_loss_soft_hard_mlp, loss_training_last_epoch, elapsed_time
 
 def train_soft_comp_mlp(architecture, min_values, max_values, thresholds,
                     train_loader, val_loader,
@@ -213,16 +224,20 @@ def train_soft_comp_mlp(architecture, min_values, max_values, thresholds,
 
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model_soft_thr_mlp.parameters(), lr=learning_rate, weight_decay=weight_decay)
+
+    start = time.perf_counter()
     best_val_loss, loss_training_last_epoch = train_model(model_soft_thr_mlp, num_epochs=num_epochs,
                 train_loader=train_loader, val_loader=val_loader,
                 optimizer=optimizer, criterion=criterion,has_quantization_layer=True,
                 train_quantization_layer=True, print_result=False, decrease_factor=decrease_factor,
                 add_noise=add_noise, device=device)
+    end = time.perf_counter()
+    elapsed_time = end - start
     
     val_loss_soft_thr_mlp = eval_val(model=model_soft_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
     comp_model.set_round_quantization(True)   
     val_loss_soft_hard_thr_mlp = eval_val(model=model_soft_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
-    return val_loss_soft_thr_mlp, val_loss_soft_hard_thr_mlp, loss_training_last_epoch
+    return val_loss_soft_thr_mlp, val_loss_soft_hard_thr_mlp, loss_training_last_epoch, elapsed_time
 
 def train_hard_comp_mlp(architecture, minmax_thresholds, thresholds,
                     train_loader, val_loader,
@@ -245,11 +260,15 @@ def train_hard_comp_mlp(architecture, minmax_thresholds, thresholds,
 
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model_hard_thr_mlp.parameters(), lr=learning_rate, weight_decay=weight_decay)
+
+    start = time.perf_counter()
     best_val_loss, loss_training_last_epoch_mm = train_model(model_hard_thr_mlp, num_epochs=num_epochs,
                 train_loader=train_loader, val_loader=val_loader,
                 optimizer=optimizer, criterion=criterion,has_quantization_layer=True,
                 train_quantization_layer=True, print_result=False, decrease_factor=decrease_factor,
                 add_noise=add_noise, device=device)
+    end = time.perf_counter()
+    elapsed_time = end - start
 
     val_loss_hard_bitwise_quantile_mlp = eval_val(model=model_hard_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
     
@@ -273,4 +292,65 @@ def train_hard_comp_mlp(architecture, minmax_thresholds, thresholds,
     
     val_loss_hard_bitwise_minmax_mlp = eval_val(model=model_hard_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
 
-    return val_loss_hard_bitwise_minmax_mlp, val_loss_hard_bitwise_quantile_mlp, loss_training_last_epoch_mm, loss_training_last_epoch_q
+    return val_loss_hard_bitwise_minmax_mlp, val_loss_hard_bitwise_quantile_mlp, loss_training_last_epoch_mm, loss_training_last_epoch_q, elapsed_time
+
+def train_llt(architecture, min_values, max_values, thresholds,
+              train_loader, val_loader,
+              num_epochs=100, learning_rate=0.001, weight_decay=0.0001,add_noise=False,
+              n_bits = 8, decrease_factor = 0.001, device='cuda'):
+    num_features = thresholds.shape[0]
+    from models import MultiLayerPerceptron
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model_llt = nn.Sequential(quant_lookup_layer(granu=9, n_bits=n_bits,n_features=num_features),MultiLayerPerceptron(architecture))
+
+    model_llt.to(device)
+
+    criterion = nn.MSELoss()
+    model_llt[0]._update_tau(1.0)
+    model_llt[0]._update_training(True)
+    optimizer = torch.optim.Adam(model_llt.parameters(), lr=learning_rate, weight_decay=weight_decay)
+
+    start = time.perf_counter()
+    best_val_loss, loss_training_last_epoch = train_model(model_llt, num_epochs=num_epochs,
+                train_loader=train_loader, val_loader=val_loader,
+                optimizer=optimizer, criterion=criterion,has_quantization_layer=True,
+                train_quantization_layer=True, print_result=False, decrease_factor=decrease_factor,
+                add_noise=add_noise, device=device)
+    end = time.perf_counter()
+    elapsed_time = end - start
+    
+    model_llt[0]._update_training(True)
+    val_loss_llt_training = eval_val(model=model_llt, val_loader=val_loader, criterion=criterion, device=device)
+    model_llt[0]._update_training(False)
+    val_loss_llt = eval_val(model=model_llt, val_loader=val_loader, criterion=criterion, device=device)
+    return val_loss_llt, val_loss_llt_training, loss_training_last_epoch, elapsed_time
+
+def train_lsq(architecture, min_values, max_values, thresholds,
+              train_loader, val_loader,
+              num_epochs=100, learning_rate=0.001, weight_decay=0.0001,add_noise=False,
+              n_bits = 8, decrease_factor = 0.001, device='cuda'):
+    num_features = thresholds.shape[0]
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    model_lsq = nn.Sequential(LsqQuanTranspose(bit=n_bits,all_positive=False,symmetric=False,per_channel=True),
+                      MultiLayerPerceptron(architecture))
+    X_train = torch.vstack([x for x, y in train_loader])
+    model_lsq[0].init_from(X_train)
+
+    model_lsq.to(device)
+
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model_lsq.parameters(), lr=learning_rate, weight_decay=weight_decay)
+
+    start = time.perf_counter()
+    best_val_loss, loss_training_last_epoch = train_model(model_lsq, num_epochs=num_epochs,
+                train_loader=train_loader, val_loader=val_loader,
+                optimizer=optimizer, criterion=criterion,has_quantization_layer=False,
+                train_quantization_layer=False, print_result=False, decrease_factor=decrease_factor,
+                add_noise=add_noise, device=device)
+    end = time.perf_counter()
+    elapsed_time = end - start
+    
+    val_loss_lsq = eval_val(model=model_lsq, val_loader=val_loader, criterion=criterion, device=device)
+ 
+    return val_loss_lsq, loss_training_last_epoch, elapsed_time

@@ -63,9 +63,10 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
     filenames = glob.glob(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_*')
     for filename in filenames:
         storage_match = re.search(r'bits_(\d+)steps.csv', filename)
-        if storage_match.group(1) is not None:
-            if int(storage_match.group(1)) > start:
-                start = int(storage_match.group(1))
+        if storage_match is not None:
+            if storage_match.group(1) is not None:
+                if int(storage_match.group(1)) > start:
+                    start = int(storage_match.group(1))
     if start > 0:
         previousdata = pd.read_csv(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_{start}steps.csv')
         results_df = pd.concat([results_df, previousdata], axis=0)
@@ -96,6 +97,13 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         kfold = KFold(n_splits=k_folds, shuffle=True, random_state=42)
         counter = 0
         for fold, (train_idx, val_idx) in enumerate(kfold.split(X_tensor)):
+            # Set a fixed random seed
+            SEED = 42 + fold + f * k_folds
+            # Set seeds for Python, NumPy, and PyTorch
+            random.seed(SEED)
+            torch.manual_seed(SEED)
+            torch.cuda.manual_seed(SEED)
+
             hyperparameter_setting_id.append(f)
             kFold_id.append(counter)
             counter += 1
@@ -135,11 +143,11 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             hyperparameter_dict['decrease_factor'].append(decrease_factor)
 
             # Calculate losses for mlp model
-            val_loss_mlp, val_loss_hard_post_mlp, val_loss_hard_thr_post_mlp, train_loss_mlp = train_mlp_model(train_loader=train_loader, val_loader=val_loader,
+            val_loss_mlp, val_loss_hard_post_mlp, val_loss_hard_thr_post_mlp, train_loss_mlp, time_fp = train_mlp_model(train_loader=train_loader, val_loader=val_loader,
                 architecture=architecture, min_values=min_values, max_values=max_values, thresholds=thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                 n_bits=n_bits, device=device)
-
+            """
             # Calculate losses for pre-training quantization model
             val_loss_hard_pre_mlp, val_loss_hard_thr_pre_mlp, train_loss_hard_thr_pre_mlp_mm, train_loss_hard_thr_pre_mlp_q = train_mlp_pre_model(train_loader=train_loader, val_loader=val_loader, architecture=architecture, min_values=min_values, max_values=max_values, thresholds=thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
@@ -159,10 +167,12 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             val_loss_hard_bitwise_minmax_mlp, val_loss_hard_bitwise_quantile_mlp, train_loss_hard_bitwise_mm, train_loss_hard_bitwise_q = train_hard_comp_mlp(train_loader=train_loader, val_loader=val_loader, architecture=architecture, minmax_thresholds=minmax_thresholds, thresholds=thresholds,
                                                         num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                                                         n_bits=n_bits, decrease_factor=decrease_factor, device=device)
-
+            """
             val_loss_mlp_values.append(val_loss_mlp)
             val_loss_hard_post_mlp_values.append(val_loss_hard_post_mlp)
             val_loss_hard_thr_post_mlp_values.append(val_loss_hard_thr_post_mlp)
+
+            """
             val_loss_hard_pre_mlp_values.append(val_loss_hard_pre_mlp)
             val_loss_hard_thr_pre_mlp_values.append(val_loss_hard_thr_pre_mlp)
             val_loss_soft_mlp_values.append(val_loss_soft_mlp)
@@ -171,21 +181,27 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             val_loss_soft_hard_comp_mlp_values.append(val_loss_soft_hard_comp_mlp)
             val_loss_hard_bitwise_minmax_mlp_values.append(val_loss_hard_bitwise_minmax_mlp)
             val_loss_hard_bitwise_quantile_mlp_values.append(val_loss_hard_bitwise_quantile_mlp)
+            """
+
 
             train_loss_mlp_values.append(train_loss_mlp)
+            """
             train_loss_hard_pre_mlp_values.append(train_loss_hard_thr_pre_mlp_mm)
             train_loss_hard_thr_pre_mlp_values.append(train_loss_hard_thr_pre_mlp_q)
             train_loss_soft_mlp_values.append(train_loss_soft)
             train_loss_soft_comp_mlp_values.append(train_loss_soft_hard_comp)
             train_loss_hard_bitwise_minmax_mlp_values.append(train_loss_hard_bitwise_mm)
             train_loss_hard_bitwise_quantile_mlp_values.append(train_loss_hard_bitwise_q)
-
+            """
             losses_df = pd.DataFrame({
                 'hyperparameter_setting_id' : hyperparameter_setting_id,
                 'kFold_id': kFold_id,
                 'val_loss_mlp': val_loss_mlp_values,
-                'val_loss_hard_post_mlp': val_loss_hard_post_mlp_values,
-                'val_loss_hard_thr_post_mlp': val_loss_hard_thr_post_mlp_values,
+                # 'val_loss_hard_post_mlp': val_loss_hard_post_mlp_values,
+                # 'val_loss_hard_thr_post_mlp': val_loss_hard_thr_post_mlp_values,
+                'train_loss_mlp': train_loss_mlp_values,
+            })
+            """
                 'val_loss_hard_pre_mlp': val_loss_hard_pre_mlp_values,
                 'val_loss_hard_thr_pre_mlp': val_loss_hard_thr_pre_mlp_values,
                 'val_loss_soft_mlp': val_loss_soft_mlp_values,
@@ -201,8 +217,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
                 'train_loss_soft_comp_mlp': train_loss_soft_comp_mlp_values,
                 'train_loss_hard_bitwise_minmax_mlp': train_loss_hard_bitwise_minmax_mlp_values,
                 'train_loss_hard_bitwise_quantile_mlp': train_loss_hard_bitwise_quantile_mlp_values
-            })
-
+            """
             # Create DataFrame with results
             if results_df is None:
                 results_df = pd.DataFrame(hyperparameter_dict)
@@ -211,11 +226,11 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
                 tmp = pd.DataFrame(hyperparameter_dict)
                 tmp = pd.concat([tmp, losses_df], axis=1)
                 results_df = pd.concat([results_df, tmp], ignore_index=True, axis=0)
-            results_df.drop_duplicates(inplace=True)
-            results_df = results_df.sort_values(['hyperparameter_setting_id', 'val_loss_mlp'])  # Sort by loss ascending
-            folder = Path(f'{result_folder}')
-            folder.mkdir(parents=True, exist_ok=True)
-            results_df.to_csv(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_{f+1}steps.csv', index=False)
+        results_df.drop_duplicates(inplace=True)
+        results_df = results_df.sort_values(['hyperparameter_setting_id', 'val_loss_mlp'])  # Sort by loss ascending
+        folder = Path(f'{result_folder}')
+        folder.mkdir(parents=True, exist_ok=True)
+        results_df.to_csv(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_{f+1}steps.csv', index=False)
         if f > 0:
             os.remove(f'{result_folder}/{dataset}_hyperparameter_tuning_{n_bits}bits_{f}steps.csv')
         results_df = pd.DataFrame()
@@ -251,12 +266,14 @@ if __name__ == "__main__":
     X_tensor, y_tensor = load_data(dataset, scratch, False)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    optimize_dict = {'weight_decay': [0, 0.0001],
+    optimize_dict = {'weight_decay': [0, 0.0001, 0.001, 0.01],
                     'learning_rate': [0.001, 0.0001],
                     'hidden_layers': [5,6,8,10],
                     'hidden_neurons': [64,128,256,512,1024, 2048, 4096, 8192],
-                    'num_epochs': [30,50,70],
-                    'decrease_factor': [0.001, 0.0001]} ## Search Space for Hyperparameter Tuning, see Appendix F, Table 3
+                    # 'num_epochs': [10]
+                    'num_epochs': [10,30,50,70],
+                    # 'decrease_factor': [0.001, 0.0001]
+                    } ## Search Space for Hyperparameter Tuning, see Appendix F, Table 3
     
     print(f"Running random search for {n_steps} steps with {n_bits} bits on dataset {dataset} on device {device}")
 
