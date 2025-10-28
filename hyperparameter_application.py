@@ -3,7 +3,7 @@ import torch
 import pandas as pd
 import random
 from tqdm import tqdm
-from training import train_mlp_model, train_mlp_pre_model, train_soft_mlp, train_soft_comp_mlp, train_hard_comp_mlp, train_llt, train_lsq
+from training import train_mlp_model, train_mlp_pre_model, train_soft_mlp, train_soft_comp_mlp, train_hard_comp_mlp, train_llt, train_lsq, train_soft_plus_mlp
 import argparse
 import os
 import re
@@ -100,12 +100,17 @@ def hyperparameter_application(X_tensor : torch.tensor, y_tensor : torch.tensor,
             num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
             n_bits=n_bits, decrease_factor=decrease_factor, device=device)
         
-        # Calculate losses for LLT quantization model
-        val_loss_llt, val_loss_llt_training, loss_training_last_epoch, time_llt = train_llt(train_loader=train_loader, val_loader=val_loader,
-                                                                                  architecture=architecture, min_values=min_values, max_values=max_values,
-                                                                                  thresholds=thresholds,
-                                                                                  num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
-                                                                                  n_bits=n_bits, decrease_factor=decrease_factor, device=device)
+        # Calculate losses for soft quantization model + learnable quantized values
+        val_loss_soft_plus_mlp, val_loss_soft_plus_hard_mlp, train_loss_plus_soft, time_SQ_plus = train_soft_plus_mlp(train_loader=train_loader, val_loader=val_loader, architecture=architecture, min_values=min_values, max_values=max_values, thresholds=thresholds,
+            num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
+            n_bits=n_bits, decrease_factor=decrease_factor, device=device)
+        
+        # # Calculate losses for LLT quantization model
+        # val_loss_llt, val_loss_llt_training, loss_training_last_epoch, time_llt = train_llt(train_loader=train_loader, val_loader=val_loader,
+        #                                                                           architecture=architecture, min_values=min_values, max_values=max_values,
+        #                                                                           thresholds=thresholds,
+        #                                                                           num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
+        #                                                                           n_bits=n_bits, decrease_factor=decrease_factor, device=device)
         
         # Calculate losses for LSQ quantization model
         val_loss_lsq, loss_training_last_epoch, time_lsq = train_lsq(train_loader=train_loader, val_loader=val_loader,
@@ -137,18 +142,21 @@ def hyperparameter_application(X_tensor : torch.tensor, y_tensor : torch.tensor,
         results_df.loc[fold, 'val_loss_SQ_inf'] = val_loss_soft_hard_mlp
         results_df.loc[fold, 'val_loss_BwSQ_train'] = val_loss_soft_comp_mlp
         results_df.loc[fold, 'val_loss_BwSQ_inf'] = val_loss_soft_hard_comp_mlp
+        results_df.loc[fold, 'val_loss_SQplus_train'] = val_loss_soft_plus_mlp
+        results_df.loc[fold, 'val_loss_SQplus_inf'] = val_loss_soft_plus_hard_mlp
         results_df.loc[fold, 'val_loss_BwMQ'] = val_loss_hard_bitwise_minmax_mlp
         results_df.loc[fold, 'val_loss_BwQQ'] = val_loss_hard_bitwise_quantile_mlp
-        results_df.loc[fold, 'val_loss_LLT'] = val_loss_llt
-        results_df.loc[fold, 'val_loss_LLT_training'] = val_loss_llt_training
+        # results_df.loc[fold, 'val_loss_LLT'] = val_loss_llt
+        # results_df.loc[fold, 'val_loss_LLT_training'] = val_loss_llt_training
         results_df.loc[fold, 'val_loss_LSQ'] = val_loss_lsq
 
         results_df.loc[fold, 'time_mlp'] = time_mlp
         results_df.loc[fold, 'time_prMQ'] = time_prMQ
         results_df.loc[fold, 'time_SQ'] = time_SQ
+        results_df.loc[fold, 'time_SQ_plus'] = time_SQ_plus
         results_df.loc[fold, 'time_BwSQ'] = time_BwSQ
         results_df.loc[fold, 'time_BwMQ'] = time_BwMQ
-        results_df.loc[fold, 'time_llt'] = time_llt
+        # results_df.loc[fold, 'time_llt'] = time_llt
         results_df.loc[fold, 'time_lsq'] = time_lsq
 
         # results_df.drop_duplicates(inplace=True)
@@ -211,6 +219,12 @@ if __name__ == "__main__":
         hidden_layers = best_setup.hidden_layers.values[ind]
         hidden_neurons = best_setup.hidden_neurons.values[ind]
         num_epochs = best_setup.num_epochs.values[ind]
+        if dataset == 'wine_quality':
+            weight_decay = 0.01
+            learning_rate = 0.0001
+            hidden_layers = 3
+            hidden_neurons = 512
+            num_epochs = 70
         decrease_factor = 0.001
         batch_size = 512
 
