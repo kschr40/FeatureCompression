@@ -71,16 +71,15 @@ def make_lineplot(layout: str):
             ylim = (0, 5)
         leftoverlines = ['Po-MQ', 'Po-QQ']
         prlines = ['Pr-MQ', 'Pr-QQ']
-        softq = ['SQ', 'Bw-MQ', 'Bw-QQ', 'Bw-SQ']
+        softq = ['Bw-SQ']
         colors = matplotlib.colormaps['tab10'].colors
         currentaxes.axhline(y=values_per_bit['FP'].mean(), linestyle='--', color='r', label='FP', lw=0.5)
-        currentaxes.plot(np.nan, np.nan, '-', color='none', label='')
         values_per_bit.plot(x='bits', y=leftoverlines, kind='line', linestyle=(0, (1, 4)), marker='o', ax=currentaxes,
-                            legend=False, ylim=ylim, ms=1, lw=0.5, color=[colors[0], colors[9]])
+                            legend=False, ylim=ylim, ms=1, lw=0.5)
         values_per_bit.plot(x='bits', y=prlines, kind='line', linestyle=(0, (1, 4)), marker='o', ax=currentaxes,
-                            legend=False, ylim=ylim, ms=1, lw=0.5, color=[colors[1], colors[5]])
+                            legend=False, ylim=ylim, ms=1, lw=0.5)
         values_per_bit.plot(x='bits', y=softq, kind='line', linestyle=(0, (3, 1)), marker='o', ax=currentaxes,
-                            legend=False, ylim=ylim, ms=1, lw=0.5, color=[colors[8], colors[4], colors[6], colors[2]])
+                            legend=False, ylim=ylim, ms=1, lw=0.5)
         currentaxes.set_xlabel('Bits')
         if (counter % 2) == 0 and counter // 2 == 0 or (counter % 2) == 1 and counter // 2 == 0:
             currentaxes.set_ylabel('MSE Loss')
