@@ -416,7 +416,10 @@ def train_llt(architecture, min_values, max_values, quantile_thresholds,
     if load_model_path is not None:
         mlp.load_state_dict(torch.load(load_model_path,weights_only=True))
 
-    model_llt = nn.Sequential(quant_lookup_layer(granu=9, n_bits=n_bits,n_features=num_features),mlp)
+    # When we have 2 bits we can create 4 thresholds (|) - if I have granularity 2 each "region" has 2 additional thresholds (i)
+    # ---i----i---|---i----i---|---i----i---|---i----i---|---i----i---
+    # TODO: this does not exactly match the size of the table?
+    model_llt = nn.Sequential(quant_lookup_layer(granu=10, n_bits=n_bits,n_features=num_features),mlp)
 
     model_llt.to(device)
 

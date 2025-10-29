@@ -228,6 +228,8 @@ class quant_lookup(nn.Module):
                 T = torch.ones(1, 1, 2 * (granu * self.range) - 1)
                 T[0, 0, (granu * self.range):] = 0
             else:
+                # NH/KS: Later when _gen_table this gets mirrowed (and therefore doubled) to match not [0,1] but [-1,1]
+                # therefore we half the range here.
                 self.range = 2 ** (n_bits - 1) - 1
                 T = torch.ones(1, 1, 2 * (granu * self.range) - 1)
                 T[0, 0, (granu * self.range):] = 0
@@ -253,7 +255,9 @@ class quant_lookup(nn.Module):
                     ## F.pad adds a zero at the beginning of second last dimension (i.e. range*granu + 1 elements), shape [1, 1, range*granu + 1, 1]
                     ## Therefore, this line effectively does: 
                     ## Puts negative part in ascending order, then adds zero, then appends positive part in ascending order
-
+            # in case of bits 2 granularity 2 the array [-1.0000][-0.5000][ 0.0000][ 0.5000][ 1.0000] is created
+            # in case of gran 10 there are 9 additional split points [-1.0000], [-0.9000], [-0.8000], [-0.7000], [-0.6000], [-0.5000], ...
+            # [-0.4000], [-0.3000], [-0.2000], [-0.1000], [ 0.0000], [ 0.1000], [ 0.2000], [ 0.3000], [ 0.4000], [ 0.5000], [ 0.6000], [ 0.7000], [ 0.8000], [ 0.9000], [ 1.0000]
             return table_q / self.range
 
         else:
@@ -321,10 +325,12 @@ class quant_lookup(nn.Module):
             x_q = self._lookup(x, table_q, scale)
 
         return x_q
+
 class quant_lookup_layer(nn.Module):
     def __init__(self, granu, n_bits, n_features, tau = 1.0):
         super(quant_lookup_layer, self).__init__()
-        is_act = True
+        # weights are clipped to [-1,1] activation [0,1] - we assume weights to keep negative values...
+        is_act = False
         self.quant_lookup_tables = nn.ModuleList([quant_lookup(granu, n_bits, is_act) for _ in range(n_features)])
         self.tau = tau
         for ql in self.quant_lookup_tables:
@@ -336,6 +342,7 @@ class quant_lookup_layer(nn.Module):
             ql.to(device)
             
     def _update_tau(self, tau):
+        # tau definitly reduces itself from 1.0 - 0.9xxx - 0.7xx ... in smaller steps towards the end
         self.tau = tau
         for ql in self.quant_lookup_tables:
             ql._update_tau(tau)
