@@ -262,7 +262,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'train_loss_LSQ'] = train_loss_LSQ
             result_df.at[f, 'time_LSQ'] = time_LSQ
             
-        if np.isnan(row['val_loss_LLT']):# and False:
+        if np.isnan(row['val_loss_LLT']) and False:
             val_loss_LLT_train, val_loss_LLT_inf, test_loss_LLT_train, test_loss_LLT_inf, train_loss_LLT, time_LLT = train_llt(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader,
                                                                                   architecture=architecture, min_values=min_values, max_values=max_values,
                                                                                   quantile_thresholds=quantile_thresholds,
@@ -395,9 +395,9 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         # results_df = results_df.sort_values(['hyperparameter_setting_id', 'val_loss_FP'])  # Sort by loss ascending
         folder = Path(f'{result_folder}/{dataset}')
         folder.mkdir(parents=True, exist_ok=True)
-        result_df.to_csv(f'{result_folder}/{dataset}/hyperparameter_tuning{n_bits}bits_{f+1}iterations.csv', index=False)
+        result_df.to_csv(f'{result_folder}/{dataset}/hyperparameter_tuning_{n_bits}bits_{f+1}iterations.csv', index=False)
         if f > 0:
-            os.remove(f'{result_folder}/{dataset}/hyperparameter_tuning{n_bits}bits_{f}iterations.csv')
+            os.remove(f'{result_folder}/{dataset}/hyperparameter_tuning_{n_bits}bits_{f}iterations.csv')
     return result_df
 
 if __name__ == "__main__":
