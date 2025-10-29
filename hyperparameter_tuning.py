@@ -28,6 +28,8 @@ def create_random_search_df(optimize_dict, k_folds, n_steps, n_bits):
 
 def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_folder, dataset,
                                               k_folds = 4, n_steps = 10, n_bits =8, optimize_dict = {}, device = 'cpu', debug=False):
+    if debug:
+        k_folds = 2
     num_features = X_tensor.shape[1]
 
     X_cv_array, X_test_array, y_cv_array, y_test_array = train_test_split(X_tensor.numpy(), y_tensor.numpy(), test_size=0.1, random_state=42)
@@ -441,7 +443,8 @@ if __name__ == "__main__":
                     'num_epochs': [30,50,70],
                     'decrease_factor': [0.001, 0.0001]
                     } ## Search Space for Hyperparameter Tuning, see Appendix F, Table 3
-    
+    if debug:
+        optimize_dict['hidden_neurons'] = [5]
     # print(f"Running random search for {n_steps} steps with {n_bits} bits on dataset {dataset} on device {device}")
 
     results_df_all = random_search_cv(X_tensor=X_tensor, y_tensor=y_tensor,
