@@ -15,10 +15,11 @@ from torch.utils.data import DataLoader, TensorDataset
 from datetime import datetime
 import numpy as np
 
-def create_random_search_df(optimize_dict, k_folds, n_steps):
-    hyperparameter_df = pd.DataFrame(columns = ['hyperparameter_setting_id','kFold_id'] + list(optimize_dict.keys()), index = range(n_steps * k_folds))
+def create_random_search_df(optimize_dict, k_folds, n_steps, n_bits):
+    hyperparameter_df = pd.DataFrame(columns = ['hyperparameter_setting_id','kFold_id','bits'] + list(optimize_dict.keys()), index = range(n_steps * k_folds))
     hyperparameter_df['hyperparameter_setting_id'] = np.repeat(np.arange(n_steps), k_folds)
     hyperparameter_df['kFold_id'] = np.tile(np.arange(k_folds), n_steps)
+    hyperparameter_df['bits'] = n_bits
     for key, value_list in optimize_dict.items():
         value_array = np.array(value_list)
         sampled = np.random.choice(value_array, size=n_steps, replace=True)
