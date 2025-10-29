@@ -33,7 +33,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
     X_cv_array, X_test_array, y_cv_array, y_test_array = train_test_split(X_tensor.numpy(), y_tensor.numpy(), test_size=0.1, random_state=42)
 
 
-    hyperparameter_df = create_random_search_df(optimize_dict, k_folds=k_folds, n_steps=n_steps)
+    hyperparameter_df = create_random_search_df(optimize_dict, k_folds=k_folds, n_steps=n_steps, n_bits=n_bits)
     methods = ['FP', 'Po-MQ', 'Po-QQ', 'Pr-MQ', 'Pr-QQ', 'SQ', 'SQplus', 'Bw-MQ', 'Bw-QQ', 'Bw-SQ', 'LLT', 'LSQ']
     val_losses = ['val_loss_' + method for method in methods]
     test_losses = ['test_loss_' + method for method in methods]
