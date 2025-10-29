@@ -27,7 +27,7 @@ def create_random_search_df(optimize_dict, k_folds, n_steps, n_bits):
     return hyperparameter_df
 
 def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_folder, dataset,
-                                              k_folds = 4, n_steps = 10, n_bits =8, optimize_dict = {}, device = 'cpu', debug=False):
+                                              k_folds = 4, n_steps = 10, n_bits =8, optimize_dict = {}, device = 'cpu', debug=False, onlyllt=False):
     if debug:
         k_folds = 2
     num_features = X_tensor.shape[1]
@@ -200,7 +200,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         hyperparameter_dict['decrease_factor'].append(decrease_factor)
 
         # Calculate losses for FP and Post-quantization models
-        if np.isnan(row['val_loss_FP']):
+        if np.isnan(row['val_loss_FP']) and not onlyllt:
             val_loss_FP, val_loss_PoMQ, val_loss_PoQQ, test_loss_FP, test_loss_PoMQ, test_loss_PoQQ, train_loss_FP, time_FP = train_fp_model(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader,
                 architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
@@ -215,7 +215,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'time_FP'] = time_FP
         
         # Calculate losses for pre-training quantization model
-        if np.isnan(row['val_loss_Pr-MQ']):
+        if np.isnan(row['val_loss_Pr-MQ']) and not onlyllt:
             val_loss_PrMQ, val_loss_PrQQ, test_loss_PrMQ, test_loss_PrQQ, train_loss_PrMQ, train_loss_PrQQ, time_PrMQ = train_pre_model(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, architecture=architecture,
                                                                                                         min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
@@ -229,7 +229,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'time_Pr-MQ'] = time_PrMQ
 
         # Calculate losses for soft quantization model
-        if np.isnan(row['val_loss_SQ']):
+        if np.isnan(row['val_loss_SQ']) and not onlyllt:
             val_loss_SQ_train, val_loss_SQ_inf, test_loss_SQ_train, test_loss_SQ_inf, train_loss_SQ, time_SQ = train_SQ(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                 n_bits=n_bits, decrease_factor=decrease_factor, device=device)
@@ -241,7 +241,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'time_SQ'] = time_SQ
         
         # Calculate losses for soft quantization model
-        if np.isnan(row['val_loss_SQplus']):
+        if np.isnan(row['val_loss_SQplus']) and not onlyllt:
             val_loss_SQPlus_train, val_loss_SQPlus_inf, test_loss_SQPlus_train, test_loss_SQPlus_inf, train_loss_SQPlus, time_SQPlus = train_SQplus(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                 n_bits=n_bits, decrease_factor=decrease_factor, device=device)
@@ -253,7 +253,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'time_SQplus'] = time_SQPlus
 
         # Calculate losses for LSQ quantization model
-        if np.isnan(row['val_loss_LSQ']):
+        if np.isnan(row['val_loss_LSQ']) and not onlyllt:
             val_loss_LSQ, test_loss_LSQ,train_loss_LSQ, time_LSQ = train_lsq(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader,
                                                                                   architecture=architecture, min_values=min_values, max_values=max_values,
                                                                                   quantile_thresholds=quantile_thresholds,
@@ -264,7 +264,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'train_loss_LSQ'] = train_loss_LSQ
             result_df.at[f, 'time_LSQ'] = time_LSQ
             
-        if np.isnan(row['val_loss_LLT']) and False:
+        if np.isnan(row['val_loss_LLT']) and onlyllt:
             val_loss_LLT_train, val_loss_LLT_inf, test_loss_LLT_train, test_loss_LLT_inf, train_loss_LLT, time_LLT = train_llt(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader,
                                                                                   architecture=architecture, min_values=min_values, max_values=max_values,
                                                                                   quantile_thresholds=quantile_thresholds,
@@ -418,6 +418,9 @@ if __name__ == "__main__":
                         help='Folder to save results')
     parser.add_argument('--debug', action='store_true', help='Should be in debug modus?')
     parser.add_argument('--no-debug', action='store_false', dest='debug', help='Do not start in debug modus')
+
+    parser.add_argument('--onlyllt', action='store_true', help='Should be in debug modus?')
+    parser.add_argument('--no-onlyllt', action='store_false', dest='debug', help='Do not start in debug modus')
     parser.set_defaults(debug=False)
 
     args = parser.parse_args()
@@ -426,6 +429,7 @@ if __name__ == "__main__":
     n_steps = args.n_steps
     n_bits = args.n_bits
     debug = args.debug
+    onlyllt = args.onlyllt
     result_folder = args.result_folder
 
     X_tensor, y_tensor = load_data(dataset, scratch, False)
@@ -453,5 +457,5 @@ if __name__ == "__main__":
                                                             n_bits=n_bits,
                                                             n_steps=n_steps,
                                                             optimize_dict=optimize_dict,
-                                                            device=device, debug=debug)
+                                                            device=device, debug=debug, onlyllt=onlyllt)
     # print(f"Finished random search for {n_steps} steps with {n_bits} bits on dataset {dataset}")
