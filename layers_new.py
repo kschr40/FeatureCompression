@@ -78,21 +78,21 @@ class SoftQuantizationPlusLayer(nn.Module):
         """
         if isinstance(thresholds, torch.Tensor):
             self.thresholds = nn.Parameter(thresholds)
-            thresholds = self.thresholds
-            thresholds_diffs = torch.diff(thresholds) 
-            thresholds_diffs = torch.cat([-thresholds_diffs[:,0:1], thresholds_diffs, thresholds_diffs[:,-1:]], dim=1)
-            thresholds_expanded = torch.cat([thresholds[:,0:1], thresholds], dim=1)
-            quantized_values = thresholds_expanded + thresholds_diffs/2 # Shape [num_features, num_thresholds+1] ## Rounded thresholds equal quantized values, see Equation (1)
-            self.quantized_values = nn.Parameter(quantized_values)
+            # thresholds = self.thresholds
+            # thresholds_diffs = torch.diff(thresholds) 
+            # thresholds_diffs = torch.cat([-thresholds_diffs[:,0:1], thresholds_diffs, thresholds_diffs[:,-1:]], dim=1)
+            # thresholds_expanded = torch.cat([thresholds[:,0:1], thresholds], dim=1)
+            # quantized_values = thresholds_expanded + thresholds_diffs/2 # Shape [num_features, num_thresholds+1] ## Rounded thresholds equal quantized values, see Equation (1)
+            # self.quantized_values = nn.Parameter(quantized_values)
         else:
             assert len(thresholds) == self.num_features, "thresholds must be a list of length num_features"
             for i, threshold in enumerate(thresholds):
                 self.thresholds[i] = nn.Parameter(threshold)
-                thresholds_diffs = torch.diff(threshold)
-                thresholds_diffs = torch.cat([-thresholds_diffs[0:1], thresholds_diffs, thresholds_diffs[-1:]], dim=0)
-                thresholds_expanded = torch.cat([threshold[0:1], threshold], dim=0)
-                quantized_values = thresholds_expanded + thresholds_diffs/2 # Shape [num_thresholds+1] ## Rounded thresholds equal quantized values, see Equation (1)
-                self.quantized_values[i] = nn.Parameter(quantized_values)
+                # thresholds_diffs = torch.diff(threshold)
+                # thresholds_diffs = torch.cat([-thresholds_diffs[0:1], thresholds_diffs, thresholds_diffs[-1:]], dim=0)
+                # thresholds_expanded = torch.cat([threshold[0:1], threshold], dim=0)
+                # quantized_values = thresholds_expanded + thresholds_diffs/2 # Shape [num_thresholds+1] ## Rounded thresholds equal quantized values, see Equation (1)
+                # self.quantized_values[i] = nn.Parameter(quantized_values)
 
     def forward(self, x, round_quantization = False):
         """Forward pass of the quantization layer.
@@ -116,7 +116,8 @@ class SoftQuantizationPlusLayer(nn.Module):
             x_bw = torch.sigmoid((x[:,:,None]-self.thresholds[None,:]) / self.tau) 
             if self.round_quantization:
                 x_bw = torch.round(x_bw)
-            x = torch.sum(x_bw * self.quantized_values.diff(dim=1)[None,:,:], dim = 2) + self.quantized_values[:,0]
+            x = torch.sum(x_bw, dim = 2)  #Soft Quantization = Sum of Bitwise Soft Quantization
+            # x = torch.sum(x_bw * self.quantized_values.diff(dim=1)[None,:,:], dim = 2) + self.quantized_values[:,0]
         return x
 
 
@@ -135,6 +136,7 @@ class SoftQuantizationLayer(nn.Module):
         super().__init__()
         self.num_features = num_features
         self.num_thresholds_per_feature = num_thresholds_per_feature
+        self.round_quantization = False
         self.tau = tau
         if isinstance(num_thresholds_per_feature, int):
             self.thresholds = nn.Parameter(torch.randn(num_features, num_thresholds_per_feature))
@@ -200,10 +202,10 @@ class SoftQuantizationLayer(nn.Module):
             quantized_values = self.calculate_quantized_values()
             # Constant number of thresholds per feature
             x = torch.sigmoid((x[:,:,None]-self.thresholds[None,:]) / self.tau)
-            if round_quantization:
+            if self.round_quantization:
                 x = torch.round(x)
-            x = quantized_values[:,0] + (quantized_values.diff(dim=1).unsqueeze(0) * x).sum(dim=-1)
-            # x = torch.sum(x, dim = 2)  #Soft Quantization = Sum of Bitwise Soft Quantization    
+            # x = quantized_values[:,0] + (quantized_values.diff(dim=1).unsqueeze(0) * x).sum(dim=-1)
+            x = torch.sum(x, dim = 2)  #Soft Quantization = Sum of Bitwise Soft Quantization    
         # if round_quantization:
         #     x = torch.round(x)
         return x    

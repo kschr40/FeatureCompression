@@ -221,16 +221,15 @@ def train_SQ(architecture, min_values, max_values, quantile_thresholds,
                 add_noise=add_noise, device=device)
     end = time.perf_counter()
     elapsed_time = end - start
-    
-    hard_quantization_layer = ThresholdQuantizationLayer(thresholds=model_SQ_quantizer.thresholds)
-    model_SQ_inf = nn.Sequential(hard_quantization_layer, mlp)
 
     val_loss_SQ_train = eval_val(model=model_SQ, val_loader=val_loader, criterion=criterion, device=device)
-    val_loss_SQ_inf = eval_val(model=model_SQ_inf, val_loader=val_loader, criterion=criterion, device=device)
-
     if test_loader is not None:
         test_loss_SQ_train = eval_val(model=model_SQ, val_loader=test_loader, criterion=criterion, device=device)
-        test_loss_SQ_inf = eval_val(model=model_SQ_inf, val_loader=test_loader, criterion=criterion, device=device)
+
+    model_SQ_quantizer.round_quantization = True
+    val_loss_SQ_inf = eval_val(model=model_SQ, val_loader=val_loader, criterion=criterion, device=device)
+    if test_loader is not None:
+        test_loss_SQ_inf = eval_val(model=model_SQ, val_loader=test_loader, criterion=criterion, device=device)
     else:
         test_loss_SQ_train = test_loss_SQ_inf = None
 
