@@ -419,9 +419,11 @@ if __name__ == "__main__":
     parser.add_argument('--debug', action='store_true', help='Should be in debug modus?')
     parser.add_argument('--no-debug', action='store_false', dest='debug', help='Do not start in debug modus')
 
-    parser.add_argument('--onlyllt', action='store_true', help='Should be in debug modus?')
-    parser.add_argument('--no-onlyllt', action='store_false', dest='debug', help='Do not start in debug modus')
+    parser.add_argument('--onlyllt', action='store_true', help='Should be in only LLT modus?')
+    parser.add_argument('--no-onlyllt', action='store_false', dest='onlyllt', help='Do not start in only LLT modus')
     parser.set_defaults(debug=False)
+    parser.set_defaults(onlyllt=False)
+
 
     args = parser.parse_args()
     dataset = args.dataset
