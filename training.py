@@ -291,7 +291,7 @@ def train_BwSQ(architecture, min_values, max_values, quantile_thresholds,
     num_features = quantile_thresholds.shape[0]
     num_thresholds_per_feature = quantile_thresholds.shape[1]
 
-    comp_model = CompressionLayer(a_init=quantile_thresholds.flatten(),
+    comp_model = BitwiseSoftQuantizationLayer(a_init=quantile_thresholds.flatten(),
                                   a_index=torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
                                   tau=1)
     architecture[0] = num_features * num_thresholds_per_feature
@@ -336,7 +336,7 @@ def train_BwMQ_BwQQ(architecture, minmax_thresholds, quantile_thresholds,
     num_features = quantile_thresholds.shape[0]
     num_thresholds_per_feature = quantile_thresholds.shape[1]
 
-    comp_thr_model = CompressionLayer(a_init=quantile_thresholds.flatten(),
+    comp_thr_model = BitwiseSoftQuantizationLayer(a_init=quantile_thresholds.flatten(),
                                   a_index=torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
                                   tau=1)
     comp_thr_model.set_round_quantization(True)
@@ -360,7 +360,7 @@ def train_BwMQ_BwQQ(architecture, minmax_thresholds, quantile_thresholds,
 
     val_loss_hard_bitwise_quantile_mlp = eval_val(model=model_hard_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
     
-    comp_thr_model = CompressionLayer(a_init = minmax_thresholds.flatten(),
+    comp_thr_model = BitwiseSoftQuantizationLayer(a_init = minmax_thresholds.flatten(),
                                   a_index = torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
                                   tau = 1)
     comp_thr_model.set_round_quantization(True)
@@ -382,7 +382,7 @@ def train_BwMQ_BwQQ(architecture, minmax_thresholds, quantile_thresholds,
 
     if test_loader is not None:
         # For quantile-based
-        comp_q = CompressionLayer(a_init=quantile_thresholds.flatten(),
+        comp_q = BitwiseSoftQuantizationLayer(a_init=quantile_thresholds.flatten(),
                                   a_index=torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
                                   tau=1)
         comp_q.set_round_quantization(True)
@@ -391,7 +391,7 @@ def train_BwMQ_BwQQ(architecture, minmax_thresholds, quantile_thresholds,
         test_loss_hard_bitwise_quantile_mlp = eval_val(model=model_q, val_loader=test_loader, criterion=criterion, device=device)
 
         # For minmax-based
-        comp_m = CompressionLayer(a_init=minmax_thresholds.flatten(),
+        comp_m = BitwiseSoftQuantizationLayer(a_init=minmax_thresholds.flatten(),
                                   a_index=torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
                                   tau=1)
         comp_m.set_round_quantization(True)
