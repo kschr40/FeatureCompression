@@ -41,7 +41,7 @@ class BitwiseSoftQuantizationLayer(nn.Module):
         Returns:
             torch.Tensor: Compressed tensor, shape [B, num_thresholds]
         """
-        y = nn.Sigmoid()((x[:,self.a_index]-self.a) / self.tau) ## Calculation of Bitwise Soft Quantization for multiple Inputs
+        y = nn.Sigmoid()((x[:,self.thresholds_index]-self.thresholds) / self.tau) ## Calculation of Bitwise Soft Quantization for multiple Inputs
         if round_quantization or self.round_quantization:
             y = torch.round(y)
         return y

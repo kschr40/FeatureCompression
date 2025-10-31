@@ -37,7 +37,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
 
 
     hyperparameter_df = create_random_search_df(optimize_dict, k_folds=k_folds, n_steps=n_steps, n_bits=n_bits)
-    methods = ['FP', 'Po-MQ', 'Po-QQ', 'Pr-MQ', 'Pr-QQ', 'SQ', 'SQplus', 'Bw-MQ', 'Bw-QQ', 'Bw-SQ', 'LLT', 'LSQ']
+    methods = ['FP', 'Po-MQ', 'Po-QQ', 'Pr-MQ', 'Pr-QQ', 'SQ', 'SQplus', 'Bw-MQ', 'Bw-QQ', 'Bw-SQ', 'LLT9', 'LLT4', 'LSQ']
     val_losses = ['val_loss_' + method for method in methods]
     test_losses = ['test_loss_' + method for method in methods]
     train_losses = ['train_loss_' + method for method in methods if 'Po' not in method]
@@ -265,18 +265,25 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'train_loss_LSQ'] = train_loss_LSQ
             result_df.at[f, 'time_LSQ'] = time_LSQ
             
-        if np.isnan(row['val_loss_LLT']) and onlyllt:
-            val_loss_LLT_train, val_loss_LLT_inf, test_loss_LLT_train, test_loss_LLT_inf, train_loss_LLT, time_LLT = train_llt(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader,
+        if np.isnan(row['val_loss_LLT9']):
+            val_loss_llt9, val_loss_llt_training9, test_loss_llt9, test_loss_llt_training9, train_loss_llt9, time_llt9, \
+           val_loss_llt4, val_loss_llt_training4, test_loss_llt4, test_loss_llt_training4, train_loss_llt4, time_llt4 = train_llt(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader,
                                                                                   architecture=architecture, min_values=min_values, max_values=max_values,
                                                                                   quantile_thresholds=quantile_thresholds,
                                                                                   num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                                                                                   n_bits=n_bits, decrease_factor=decrease_factor, device=device)
-            result_df.at[f, 'val_loss_LLT'] = val_loss_LLT_inf
-            result_df.at[f, 'val_loss_LLT_train'] = val_loss_LLT_train
-            result_df.at[f, 'test_loss_LLT'] = test_loss_LLT_train
-            result_df.at[f, 'test_loss_LLT_train'] = test_loss_LLT_inf
-            result_df.at[f, 'train_loss_LLT'] = train_loss_LLT
-            result_df.at[f, 'time_LLT'] = time_LLT    
+            result_df.at[f, 'val_loss_LLT9'] = val_loss_llt9
+            result_df.at[f, 'val_loss_LLT9_train'] = val_loss_llt_training9
+            result_df.at[f, 'test_loss_LLT9'] = test_loss_llt9
+            result_df.at[f, 'test_loss_LLT9_train'] = test_loss_llt_training9
+            result_df.at[f, 'train_loss_LLT9'] = train_loss_llt9
+            result_df.at[f, 'time_LLT9'] = time_llt9
+            result_df.at[f, 'val_loss_LLT4'] = val_loss_llt4
+            result_df.at[f, 'val_loss_LLT4_train'] = val_loss_llt_training4
+            result_df.at[f, 'test_loss_LLT4'] = test_loss_llt4
+            result_df.at[f, 'test_loss_LLT4_train'] = test_loss_llt_training4
+            result_df.at[f, 'train_loss_LLT4'] = train_loss_llt4
+            result_df.at[f, 'time_LLT4'] = time_llt4
 
         # Calculate losses for bitwise soft quantization model
         if np.isnan(row['val_loss_Bw-SQ']):
@@ -452,6 +459,8 @@ if __name__ == "__main__":
                     } ## Search Space for Hyperparameter Tuning, see Appendix F, Table 3
     if debug:
         optimize_dict['hidden_neurons'] = [5]
+        optimize_dict['num_epochs'] = [10]
+        optimize_dict['hidden_layers'] = [1,2]
     # print(f"Running random search for {n_steps} steps with {n_bits} bits on dataset {dataset} on device {device}")
 
     results_df_all = random_search_cv(X_tensor=X_tensor, y_tensor=y_tensor,

@@ -291,8 +291,8 @@ def train_BwSQ(architecture, min_values, max_values, quantile_thresholds,
     num_features = quantile_thresholds.shape[0]
     num_thresholds_per_feature = quantile_thresholds.shape[1]
 
-    comp_model = BitwiseSoftQuantizationLayer(a_init=quantile_thresholds.flatten(),
-                                  a_index=torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
+    comp_model = BitwiseSoftQuantizationLayer(thresholds_init=quantile_thresholds.flatten(),
+                                  thresholds_index=torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
                                   tau=1)
     architecture[0] = num_features * num_thresholds_per_feature
     mlp = MultiLayerPerceptron(architecture)
@@ -336,8 +336,8 @@ def train_BwMQ_BwQQ(architecture, minmax_thresholds, quantile_thresholds,
     num_features = quantile_thresholds.shape[0]
     num_thresholds_per_feature = quantile_thresholds.shape[1]
 
-    comp_thr_model = BitwiseSoftQuantizationLayer(a_init=quantile_thresholds.flatten(),
-                                  a_index=torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
+    comp_thr_model = BitwiseSoftQuantizationLayer(thresholds_init=quantile_thresholds.flatten(),
+                                  thresholds_index=torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
                                   tau=1)
     comp_thr_model.set_round_quantization(True)
     architecture[0] = num_features * num_thresholds_per_feature
@@ -360,8 +360,8 @@ def train_BwMQ_BwQQ(architecture, minmax_thresholds, quantile_thresholds,
 
     val_loss_hard_bitwise_quantile_mlp = eval_val(model=model_hard_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
     
-    comp_thr_model = BitwiseSoftQuantizationLayer(a_init = minmax_thresholds.flatten(),
-                                  a_index = torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
+    comp_thr_model = BitwiseSoftQuantizationLayer(thresholds_init = minmax_thresholds.flatten(),
+                                  thresholds_index = torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
                                   tau = 1)
     comp_thr_model.set_round_quantization(True)
     architecture[0] = num_features * num_thresholds_per_feature
@@ -382,8 +382,8 @@ def train_BwMQ_BwQQ(architecture, minmax_thresholds, quantile_thresholds,
 
     if test_loader is not None:
         # For quantile-based
-        comp_q = BitwiseSoftQuantizationLayer(a_init=quantile_thresholds.flatten(),
-                                  a_index=torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
+        comp_q = BitwiseSoftQuantizationLayer(thresholds_init=quantile_thresholds.flatten(),
+                                  thresholds_index=torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
                                   tau=1)
         comp_q.set_round_quantization(True)
         model_q = nn.Sequential(comp_q, MultiLayerPerceptron(architecture))
@@ -391,8 +391,8 @@ def train_BwMQ_BwQQ(architecture, minmax_thresholds, quantile_thresholds,
         test_loss_hard_bitwise_quantile_mlp = eval_val(model=model_q, val_loader=test_loader, criterion=criterion, device=device)
 
         # For minmax-based
-        comp_m = BitwiseSoftQuantizationLayer(a_init=minmax_thresholds.flatten(),
-                                  a_index=torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
+        comp_m = BitwiseSoftQuantizationLayer(thresholds_init=minmax_thresholds.flatten(),
+                                  thresholds_index=torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
                                   tau=1)
         comp_m.set_round_quantization(True)
         model_m = nn.Sequential(comp_m, MultiLayerPerceptron(architecture))
@@ -418,38 +418,63 @@ def train_llt(architecture, min_values, max_values, quantile_thresholds,
     # When we have 2 bits we can create 4 thresholds (|) - if I have granularity 2 each "region" has 2 additional thresholds (i)
     # ---i----i---|---i----i---|---i----i---|---i----i---|---i----i---
     # TODO: this does not exactly match the size of the table?
-    model_llt = nn.Sequential(quant_lookup_layer(granu=10, n_bits=n_bits,n_features=num_features),mlp)
+    model_llt9 = nn.Sequential(quant_lookup_layer(granu=9, n_bits=n_bits,n_features=num_features),mlp)
+    model_llt4 = nn.Sequential(quant_lookup_layer(granu=4, n_bits=n_bits,n_features=num_features),mlp)
 
-    model_llt.to(device)
+    model_llt9.to(device)
+    model_llt4.to(device)
 
     criterion = nn.MSELoss()
-    model_llt[0]._update_tau(1.0)
-    model_llt[0]._update_training(True)
-    optimizer = torch.optim.Adam(model_llt.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    model_llt9[0]._update_tau(1.0)
+    model_llt9[0]._update_training(True)
+    optimizer9 = torch.optim.Adam(model_llt9.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    model_llt4[0]._update_tau(1.0)
+    model_llt4[0]._update_training(True)
+    optimizer4 = torch.optim.Adam(model_llt4.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
     start = time.perf_counter()
-    best_val_loss, loss_training_last_epoch = train_model(model_llt, num_epochs=num_epochs,
+    best_val_loss, loss_training_last_epoch9 = train_model(model_llt9, num_epochs=num_epochs,
                 train_loader=train_loader, val_loader=val_loader,
-                optimizer=optimizer, criterion=criterion,has_quantization_layer=True,
+                optimizer=optimizer9, criterion=criterion,has_quantization_layer=True,
                 train_quantization_layer=True, print_result=False, decrease_factor=decrease_factor,
                 add_noise=add_noise, device=device)
     end = time.perf_counter()
-    elapsed_time = end - start
+    elapsed_time9 = end - start
+
+    start = time.perf_counter()
+    best_val_loss, loss_training_last_epoch4 = train_model(model_llt4, num_epochs=num_epochs,
+                train_loader=train_loader, val_loader=val_loader,
+                optimizer=optimizer4, criterion=criterion,has_quantization_layer=True,
+                train_quantization_layer=True, print_result=False, decrease_factor=decrease_factor,
+                add_noise=add_noise, device=device)
+    end = time.perf_counter()
+    elapsed_time4 = end - start
     
-    model_llt[0]._update_training(True)
-    val_loss_llt_training = eval_val(model=model_llt, val_loader=val_loader, criterion=criterion, device=device)
-    model_llt[0]._update_training(False)
-    val_loss_llt = eval_val(model=model_llt, val_loader=val_loader, criterion=criterion, device=device)
+    model_llt9[0]._update_training(True)
+    val_loss_llt_training9 = eval_val(model=model_llt9, val_loader=val_loader, criterion=criterion, device=device)
+    model_llt9[0]._update_training(False)
+    val_loss_llt9 = eval_val(model=model_llt4, val_loader=val_loader, criterion=criterion, device=device)
+
+    model_llt4[0]._update_training(True)
+    val_loss_llt_training4 = eval_val(model=model_llt4, val_loader=val_loader, criterion=criterion, device=device)
+    model_llt4[0]._update_training(False)
+    val_loss_llt4 = eval_val(model=model_llt4, val_loader=val_loader, criterion=criterion, device=device)
 
     if test_loader is not None:
-        model_llt[0]._update_training(True)
-        test_loss_llt_training = eval_val(model=model_llt, val_loader=test_loader, criterion=criterion, device=device)
-        model_llt[0]._update_training(False)
-        test_loss_llt = eval_val(model=model_llt, val_loader=test_loader, criterion=criterion, device=device)
+        model_llt9[0]._update_training(True)
+        test_loss_llt_training9 = eval_val(model=model_llt9, val_loader=test_loader, criterion=criterion, device=device)
+        model_llt9[0]._update_training(False)
+        test_loss_llt9 = eval_val(model=model_llt9, val_loader=test_loader, criterion=criterion, device=device)
+        model_llt4[0]._update_training(True)
+        test_loss_llt_training4 = eval_val(model=model_llt4, val_loader=test_loader, criterion=criterion, device=device)
+        model_llt4[0]._update_training(False)
+        test_loss_llt4 = eval_val(model=model_llt4, val_loader=test_loader, criterion=criterion, device=device)
     else:
-        test_loss_llt_training = test_loss_llt = None
+        test_loss_llt_training9 = test_loss_llt9 = None
+        test_loss_llt_training4 = test_loss_llt4 = None
 
-    return val_loss_llt, val_loss_llt_training, test_loss_llt, test_loss_llt_training, loss_training_last_epoch, elapsed_time
+    return val_loss_llt9, val_loss_llt_training9, test_loss_llt9, test_loss_llt_training9, loss_training_last_epoch9, elapsed_time9, \
+           val_loss_llt4, val_loss_llt_training4, test_loss_llt4, test_loss_llt_training4, loss_training_last_epoch4, elapsed_time4
 
 
 def train_lsq(architecture, min_values, max_values, quantile_thresholds,
