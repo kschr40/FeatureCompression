@@ -16,6 +16,7 @@ from datetime import datetime
 import numpy as np
 
 def create_random_search_df(optimize_dict, k_folds, n_steps, n_bits):
+    np.random.seed(42)
     hyperparameter_df = pd.DataFrame(columns = ['hyperparameter_setting_id','kFold_id','bits'] + list(optimize_dict.keys()), index = range(n_steps * k_folds))
     hyperparameter_df['hyperparameter_setting_id'] = np.repeat(np.arange(n_steps), k_folds)
     hyperparameter_df['kFold_id'] = np.tile(np.arange(k_folds), n_steps)
@@ -86,7 +87,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
     # Perform random search
     random.seed(datetime.now().timestamp())
     start = 0
-    filenames = glob.glob(f'{result_folder}/{dataset}/hyperparameter_tuning_{n_bits}bits_*')
+    filenames = glob.glob(f'{result_folder}/{dataset}/{dataset}_hyperparameter_tuning_{n_bits}bits_*')
     for filename in filenames:
         storage_match = re.search(r'iterations_(\d+).csv', filename)
         if storage_match is not None:
@@ -94,7 +95,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
                 if int(storage_match.group(1)) > start:
                     start = int(storage_match.group(1))
     if start > 0:
-        previousdata = pd.read_csv(f'{result_folder}/{dataset}/hyperparameter_tuning_{n_bits}bits_{start}iterations.csv')
+        previousdata = pd.read_csv(f'{result_folder}/{dataset}/{dataset}_hyperparameter_tuning_{n_bits}bits_{start}iterations.csv')
         if len(previousdata) == start * k_folds:
             print(f"Resuming from previous run with {start} iterations.")
             result_df = previousdata
@@ -397,9 +398,9 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         # results_df = results_df.sort_values(['hyperparameter_setting_id', 'val_loss_FP'])  # Sort by loss ascending
         folder = Path(f'{result_folder}/{dataset}')
         folder.mkdir(parents=True, exist_ok=True)
-        result_df.to_csv(f'{result_folder}/{dataset}/hyperparameter_tuning_{n_bits}bits_{f+1}iterations.csv', index=False)
+        result_df.to_csv(f'{result_folder}/{dataset}/{dataset}_hyperparameter_tuning_{n_bits}bits_{f+1}iterations.csv', index=False)
         if f > 0:
-            os.remove(f'{result_folder}/{dataset}/hyperparameter_tuning_{n_bits}bits_{f}iterations.csv')
+            os.remove(f'{result_folder}/{dataset}/{dataset}_hyperparameter_tuning_{n_bits}bits_{f}iterations.csv')
     return result_df
 
 if __name__ == "__main__":
