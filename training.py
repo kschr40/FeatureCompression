@@ -97,8 +97,8 @@ def train_model(model: nn.Module,
 def train_fp_model(architecture, min_values, max_values, quantile_thresholds,
                     train_loader, val_loader, test_loader=None,
                     num_epochs=100, learning_rate=0.001, weight_decay=0.0001, add_noise=False,
-                    n_bits = 8, device='cuda', save_model_path=None):
-    model = MultiLayerPerceptron(architecture)
+                    n_bits = 8, device='cuda', save_model_path=None, dropout = 0.0):
+    model = MultiLayerPerceptron(architecture, dropout=dropout)
 
     model.to(device)
     criterion = nn.MSELoss()
@@ -125,6 +125,7 @@ def train_fp_model(architecture, min_values, max_values, quantile_thresholds,
     model_PoQQ = nn.Sequential(quantile_quantization, model)
     model_PoQQ.to(device)
 
+    model.eval()
     val_loss_FP = eval_val(model=model, val_loader=val_loader, criterion=criterion, device=device)
     val_loss_PoMQ = eval_val(model=model_PoMQ, val_loader=val_loader, criterion=criterion, device=device)
     val_loss_PoQQ = eval_val(model=model_PoQQ, val_loader=val_loader, criterion=criterion, device=device)
@@ -142,12 +143,12 @@ def train_fp_model(architecture, min_values, max_values, quantile_thresholds,
 def train_pre_model(architecture, min_values, max_values, quantile_thresholds,
                     train_loader, val_loader, test_loader=None,
                     num_epochs=100, learning_rate=0.001, weight_decay=0.0001, add_noise=False,
-                    n_bits = 8, device='cuda', load_model_path=None):
+                    n_bits = 8, device='cuda', load_model_path=None, dropout = 0.0):
     minmax_quantization = MinMaxQuantizationLayer(n_bits=n_bits, min_values=min_values, max_values=max_values)
     quantile_quantization = QuantileQuantizationLayer(thresholds=quantile_thresholds)
 
-    mlp_MQ = MultiLayerPerceptron(architecture)
-    mlp_QQ = MultiLayerPerceptron(architecture)
+    mlp_MQ = MultiLayerPerceptron(architecture, dropout=dropout)
+    mlp_QQ = MultiLayerPerceptron(architecture, dropout=dropout)
     if load_model_path is not None:
         mlp_MQ.load_state_dict(torch.load(load_model_path,weights_only=True))
         mlp_QQ.load_state_dict(torch.load(load_model_path,weights_only=True))
@@ -169,7 +170,7 @@ def train_pre_model(architecture, min_values, max_values, quantile_thresholds,
                 add_noise=add_noise, device=device)
     end = time.perf_counter()
     elapsed_time = end - start
-
+    model_PrMQ.eval()
     val_loss_PrMQ = eval_val(model=model_PrMQ, val_loader=val_loader, criterion=criterion, device=device)
 
     criterion = nn.MSELoss()
@@ -180,6 +181,7 @@ def train_pre_model(architecture, min_values, max_values, quantile_thresholds,
                 train_quantization_layer=False, print_result=False,
                 add_noise=add_noise, device=device)
 
+    model_PrQQ.eval()
     val_loss_PrQQ = eval_val(model=model_PrQQ, val_loader=val_loader, criterion=criterion, device=device)
 
     if test_loader is not None:
@@ -194,7 +196,7 @@ def train_pre_model(architecture, min_values, max_values, quantile_thresholds,
 def train_SQ(architecture, min_values, max_values, quantile_thresholds,
                     train_loader, val_loader, test_loader=None,
                     num_epochs=100, learning_rate=0.001, weight_decay=0.0001, add_noise=False,
-                    n_bits = 8, decrease_factor = 0.001, device='cuda', load_model_path=None):
+                    n_bits = 8, decrease_factor = 0.001, device='cuda', load_model_path=None, dropout = 0.0):
     num_features = quantile_thresholds.shape[0]
     num_thresholds_per_feature = quantile_thresholds.shape[1]
     model_SQ_quantizer = SoftQuantizationLayer(num_features=quantile_thresholds.shape[0], 
@@ -202,7 +204,7 @@ def train_SQ(architecture, min_values, max_values, quantile_thresholds,
                                      tau=1)
 
     model_SQ_quantizer.set_thresholds(quantile_thresholds)
-    mlp = MultiLayerPerceptron(architecture)
+    mlp = MultiLayerPerceptron(architecture, dropout=dropout)
 
     if load_model_path is not None:
         mlp.load_state_dict(torch.load(load_model_path,weights_only=True))
@@ -222,6 +224,7 @@ def train_SQ(architecture, min_values, max_values, quantile_thresholds,
     end = time.perf_counter()
     elapsed_time = end - start
 
+    model_SQ.eval()
     val_loss_SQ_train = eval_val(model=model_SQ, val_loader=val_loader, criterion=criterion, device=device)
     if test_loader is not None:
         test_loss_SQ_train = eval_val(model=model_SQ, val_loader=test_loader, criterion=criterion, device=device)
@@ -239,7 +242,7 @@ def train_SQ(architecture, min_values, max_values, quantile_thresholds,
 def train_SQplus(architecture, min_values, max_values, quantile_thresholds,
                     train_loader, val_loader, test_loader=None,
                     num_epochs=100, learning_rate=0.001, weight_decay=0.0001, add_noise=False,
-                    n_bits = 8, decrease_factor = 0.001, device='cuda', load_model_path=None):
+                    n_bits = 8, decrease_factor = 0.001, device='cuda', load_model_path=None, dropout = 0.0):
     num_features = quantile_thresholds.shape[0]
     num_thresholds_per_feature = quantile_thresholds.shape[1]
 
@@ -248,7 +251,7 @@ def train_SQplus(architecture, min_values, max_values, quantile_thresholds,
                                                     tau=1)
     quantization_model.set_thresholds(quantile_thresholds)
 
-    mlp = MultiLayerPerceptron(architecture)
+    mlp = MultiLayerPerceptron(architecture, dropout=dropout)
 
     if load_model_path is not None:
         mlp.load_state_dict(torch.load(load_model_path,weights_only=True))
@@ -268,6 +271,7 @@ def train_SQplus(architecture, min_values, max_values, quantile_thresholds,
     end = time.perf_counter()
     elapsed_time = end - start
     
+    model_soft_mlp.eval()
     val_loss_soft_mlp = eval_val(model=model_soft_mlp, val_loader=val_loader, criterion=criterion, device=device)
     quantization_model.round_quantization = True
     val_loss_soft_hard_mlp = eval_val(model=model_soft_mlp, val_loader=val_loader, criterion=criterion, device=device)
@@ -287,7 +291,7 @@ def train_SQplus(architecture, min_values, max_values, quantile_thresholds,
 def train_BwSQ(architecture, min_values, max_values, quantile_thresholds,
                     train_loader, val_loader, test_loader=None,
                     num_epochs=100, learning_rate=0.001, weight_decay=0.0001, add_noise=False,
-                    n_bits = 8, decrease_factor = 0.001, device='cuda'):
+                    n_bits = 8, decrease_factor = 0.001, device='cuda', dropout = 0.0):
     num_features = quantile_thresholds.shape[0]
     num_thresholds_per_feature = quantile_thresholds.shape[1]
 
@@ -295,7 +299,7 @@ def train_BwSQ(architecture, min_values, max_values, quantile_thresholds,
                                   thresholds_index=torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
                                   tau=1)
     architecture[0] = num_features * num_thresholds_per_feature
-    mlp = MultiLayerPerceptron(architecture)
+    mlp = MultiLayerPerceptron(architecture, dropout=dropout)
 
 
 
@@ -313,9 +317,10 @@ def train_BwSQ(architecture, min_values, max_values, quantile_thresholds,
                 add_noise=add_noise, device=device)
     end = time.perf_counter()
     elapsed_time = end - start
-    
+    model_soft_thr_mlp.eval()
     val_loss_soft_thr_mlp = eval_val(model=model_soft_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
     comp_model.set_round_quantization(True)   
+    model_soft_thr_mlp.eval()
     val_loss_soft_hard_thr_mlp = eval_val(model=model_soft_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
 
     if test_loader is not None:
@@ -332,7 +337,7 @@ def train_BwSQ(architecture, min_values, max_values, quantile_thresholds,
 def train_BwMQ_BwQQ(architecture, minmax_thresholds, quantile_thresholds,
                     train_loader, val_loader, test_loader=None,
                     num_epochs=100, learning_rate=0.001, weight_decay=0.0001, add_noise=False,
-                    n_bits = 8, decrease_factor = 0.001, device='cuda'):
+                    n_bits = 8, decrease_factor = 0.001, device='cuda', dropout = 0.0):
     num_features = quantile_thresholds.shape[0]
     num_thresholds_per_feature = quantile_thresholds.shape[1]
 
@@ -341,9 +346,9 @@ def train_BwMQ_BwQQ(architecture, minmax_thresholds, quantile_thresholds,
                                   tau=1)
     comp_thr_model.set_round_quantization(True)
     architecture[0] = num_features * num_thresholds_per_feature
-    mlp = MultiLayerPerceptron(architecture)
+    mlp_BwMQ = MultiLayerPerceptron(architecture, dropout=dropout)
 
-    model_hard_thr_mlp = nn.Sequential(comp_thr_model, mlp)
+    model_hard_thr_mlp = nn.Sequential(comp_thr_model, mlp_BwMQ)
     model_hard_thr_mlp.to(device)
 
     criterion = nn.MSELoss()
@@ -358,6 +363,7 @@ def train_BwMQ_BwQQ(architecture, minmax_thresholds, quantile_thresholds,
     end = time.perf_counter()
     elapsed_time = end - start
 
+    model_hard_thr_mlp.eval()
     val_loss_hard_bitwise_quantile_mlp = eval_val(model=model_hard_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
     
     comp_thr_model = BitwiseSoftQuantizationLayer(thresholds_init = minmax_thresholds.flatten(),
@@ -365,9 +371,9 @@ def train_BwMQ_BwQQ(architecture, minmax_thresholds, quantile_thresholds,
                                   tau = 1)
     comp_thr_model.set_round_quantization(True)
     architecture[0] = num_features * num_thresholds_per_feature
-    mlp = MultiLayerPerceptron(architecture)
+    mlp_BwQQ = MultiLayerPerceptron(architecture, dropout=dropout)
 
-    model_hard_thr_mlp = nn.Sequential(comp_thr_model, mlp)
+    model_hard_thr_mlp = nn.Sequential(comp_thr_model,  mlp_BwQQ)
     model_hard_thr_mlp.to(device)
 
     criterion = nn.MSELoss()
@@ -377,7 +383,8 @@ def train_BwMQ_BwQQ(architecture, minmax_thresholds, quantile_thresholds,
                 optimizer=optimizer, criterion=criterion,has_quantization_layer=True,
                 train_quantization_layer=True, print_result=False, decrease_factor=decrease_factor,
                 add_noise=add_noise, device=device)
-    
+
+    model_hard_thr_mlp.eval()
     val_loss_hard_bitwise_minmax_mlp = eval_val(model=model_hard_thr_mlp, val_loader=val_loader, criterion=criterion, device=device)
 
     if test_loader is not None:
@@ -386,7 +393,7 @@ def train_BwMQ_BwQQ(architecture, minmax_thresholds, quantile_thresholds,
                                   thresholds_index=torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
                                   tau=1)
         comp_q.set_round_quantization(True)
-        model_q = nn.Sequential(comp_q, MultiLayerPerceptron(architecture))
+        model_q = nn.Sequential(comp_q, mlp_BwMQ)
         model_q.to(device)
         test_loss_hard_bitwise_quantile_mlp = eval_val(model=model_q, val_loader=test_loader, criterion=criterion, device=device)
 
@@ -395,7 +402,7 @@ def train_BwMQ_BwQQ(architecture, minmax_thresholds, quantile_thresholds,
                                   thresholds_index=torch.repeat_interleave(torch.arange(num_features), num_thresholds_per_feature),
                                   tau=1)
         comp_m.set_round_quantization(True)
-        model_m = nn.Sequential(comp_m, MultiLayerPerceptron(architecture))
+        model_m = nn.Sequential(comp_m, mlp_BwQQ)
         model_m.to(device)
         test_loss_hard_bitwise_minmax_mlp = eval_val(model=model_m, val_loader=test_loader, criterion=criterion, device=device)
     else:
@@ -407,19 +414,21 @@ def train_BwMQ_BwQQ(architecture, minmax_thresholds, quantile_thresholds,
 def train_llt(architecture, min_values, max_values, quantile_thresholds,
               train_loader, val_loader, test_loader=None,
               num_epochs=100, learning_rate=0.001, weight_decay=0.0001, add_noise=False,
-              n_bits = 8, decrease_factor = 0.001, device='cuda', load_model_path=None):
+              n_bits = 8, decrease_factor = 0.001, device='cuda', load_model_path=None, dropout = 0.0):
     num_features = quantile_thresholds.shape[0]
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    mlp = MultiLayerPerceptron(architecture)
+    mlp_llt4 = MultiLayerPerceptron(architecture, dropout=dropout)
+    mlp_llt9 = MultiLayerPerceptron(architecture, dropout=dropout)
 
     if load_model_path is not None:
-        mlp.load_state_dict(torch.load(load_model_path,weights_only=True))
+        mlp_llt4.load_state_dict(torch.load(load_model_path,weights_only=True))
+        mlp_llt9.load_state_dict(torch.load(load_model_path,weights_only=True))
 
     # When we have 2 bits we can create 4 thresholds (|) - if I have granularity 2 each "region" has 2 additional thresholds (i)
     # ---i----i---|---i----i---|---i----i---|---i----i---|---i----i---
     # TODO: this does not exactly match the size of the table?
-    model_llt9 = nn.Sequential(quant_lookup_layer(granu=9, n_bits=n_bits,n_features=num_features),mlp)
-    model_llt4 = nn.Sequential(quant_lookup_layer(granu=4, n_bits=n_bits,n_features=num_features),mlp)
+    model_llt9 = nn.Sequential(quant_lookup_layer(granu=9, n_bits=n_bits,n_features=num_features),mlp_llt9)
+    model_llt4 = nn.Sequential(quant_lookup_layer(granu=4, n_bits=n_bits,n_features=num_features),mlp_llt4)
 
     model_llt9.to(device)
     model_llt4.to(device)
@@ -450,11 +459,13 @@ def train_llt(architecture, min_values, max_values, quantile_thresholds,
     end = time.perf_counter()
     elapsed_time4 = end - start
     
+    model_llt9.eval()
     model_llt9[0]._update_training(True)
     val_loss_llt_training9 = eval_val(model=model_llt9, val_loader=val_loader, criterion=criterion, device=device)
     model_llt9[0]._update_training(False)
     val_loss_llt9 = eval_val(model=model_llt9, val_loader=val_loader, criterion=criterion, device=device)
 
+    model_llt4.eval()
     model_llt4[0]._update_training(True)
     val_loss_llt_training4 = eval_val(model=model_llt4, val_loader=val_loader, criterion=criterion, device=device)
     model_llt4[0]._update_training(False)
@@ -480,11 +491,11 @@ def train_llt(architecture, min_values, max_values, quantile_thresholds,
 def train_lsq(architecture, min_values, max_values, quantile_thresholds,
               train_loader, val_loader, test_loader=None,
               num_epochs=100, learning_rate=0.001, weight_decay=0.0001, add_noise=False,
-              n_bits = 8, decrease_factor = 0.001, device='cuda', load_model_path=None):
+              n_bits = 8, decrease_factor = 0.001, device='cuda', load_model_path=None, dropout = 0.0):
     num_features = quantile_thresholds.shape[0]
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    mlp = MultiLayerPerceptron(architecture)
+    mlp = MultiLayerPerceptron(architecture, dropout=dropout)
     if load_model_path is not None:
         mlp.load_state_dict(torch.load(load_model_path,weights_only=True))
 
@@ -507,6 +518,7 @@ def train_lsq(architecture, min_values, max_values, quantile_thresholds,
     end = time.perf_counter()
     elapsed_time = end - start
     
+    model_lsq.eval()
     val_loss_lsq = eval_val(model=model_lsq, val_loader=val_loader, criterion=criterion, device=device)
 
     if test_loader is not None:

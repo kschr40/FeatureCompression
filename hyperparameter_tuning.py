@@ -28,7 +28,8 @@ def create_random_search_df(optimize_dict, k_folds, n_steps, n_bits):
     return hyperparameter_df
 
 def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_folder, dataset,
-                                              k_folds = 4, n_steps = 10, n_bits =8, optimize_dict = {}, device = 'cpu', debug=False, onlyllt=False):
+                                              k_folds = 4, n_steps = 10, n_bits =8, optimize_dict = {}, device = 'cpu', debug=False, 
+                                              onlyllt=False, onlybwsq = False):
     if debug:
         k_folds = 2
     num_features = X_tensor.shape[1]
@@ -101,7 +102,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         result_df = previousdata
     
     kfold = KFold(n_splits=k_folds, shuffle=True, random_state=42)
-    kfold_split = kfold.split(X_tensor)
+    kfold_split = kfold.split(X_cv_array)
     splits = list(kfold_split)
     for f, row in tqdm(result_df.iterrows(), total=result_df.shape[0]):
         if not row.isna().any():
@@ -159,10 +160,10 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         # kFold_id.append(counter)
         # counter += 1
         # Preprocess data
-        X_train_tensor = X_tensor[train_idx]
-        y_train_tensor = y_tensor[train_idx]
-        X_val_tensor = X_tensor[val_idx]
-        y_val_tensor = y_tensor[val_idx]
+        X_train_tensor = X_cv_array[train_idx]
+        y_train_tensor = y_cv_array[train_idx]
+        X_val_tensor = X_cv_array[val_idx]
+        y_val_tensor = y_cv_array[val_idx]
 
         scaler_X = StandardScaler()
         scaler_y = StandardScaler()
@@ -201,7 +202,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         hyperparameter_dict['decrease_factor'].append(decrease_factor)
 
         # Calculate losses for FP and Post-quantization models
-        if np.isnan(row['val_loss_FP']) and not onlyllt:
+        if np.isnan(row['val_loss_FP']) and not onlyllt and not onlybwsq:
             val_loss_FP, val_loss_PoMQ, val_loss_PoQQ, test_loss_FP, test_loss_PoMQ, test_loss_PoQQ, train_loss_FP, time_FP = train_fp_model(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader,
                 architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
@@ -216,7 +217,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'time_FP'] = time_FP
         
         # Calculate losses for pre-training quantization model
-        if np.isnan(row['val_loss_Pr-MQ']) and not onlyllt:
+        if np.isnan(row['val_loss_Pr-MQ']) and not onlyllt and not onlybwsq:
             val_loss_PrMQ, val_loss_PrQQ, test_loss_PrMQ, test_loss_PrQQ, train_loss_PrMQ, train_loss_PrQQ, time_PrMQ = train_pre_model(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, architecture=architecture,
                                                                                                         min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
@@ -230,7 +231,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'time_Pr-MQ'] = time_PrMQ
 
         # Calculate losses for soft quantization model
-        if np.isnan(row['val_loss_SQ']) and not onlyllt:
+        if np.isnan(row['val_loss_SQ']) and not onlyllt  and not onlybwsq:
             val_loss_SQ_train, val_loss_SQ_inf, test_loss_SQ_train, test_loss_SQ_inf, train_loss_SQ, time_SQ = train_SQ(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                 n_bits=n_bits, decrease_factor=decrease_factor, device=device)
@@ -242,7 +243,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'time_SQ'] = time_SQ
         
         # Calculate losses for soft quantization model
-        if np.isnan(row['val_loss_SQplus']) and not onlyllt:
+        if np.isnan(row['val_loss_SQplus']) and not onlyllt  and not onlybwsq:
             val_loss_SQPlus_train, val_loss_SQPlus_inf, test_loss_SQPlus_train, test_loss_SQPlus_inf, train_loss_SQPlus, time_SQPlus = train_SQplus(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                 n_bits=n_bits, decrease_factor=decrease_factor, device=device)
@@ -254,7 +255,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'time_SQplus'] = time_SQPlus
 
         # Calculate losses for LSQ quantization model
-        if np.isnan(row['val_loss_LSQ']) and not onlyllt:
+        if np.isnan(row['val_loss_LSQ']) and not onlyllt  and not onlybwsq:
             val_loss_LSQ, test_loss_LSQ,train_loss_LSQ, time_LSQ = train_lsq(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader,
                                                                                   architecture=architecture, min_values=min_values, max_values=max_values,
                                                                                   quantile_thresholds=quantile_thresholds,
@@ -265,7 +266,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'train_loss_LSQ'] = train_loss_LSQ
             result_df.at[f, 'time_LSQ'] = time_LSQ
             
-        if np.isnan(row['val_loss_LLT9']):
+        if np.isnan(row['val_loss_LLT9'])  and not onlybwsq:
             val_loss_llt9, val_loss_llt_training9, test_loss_llt9, test_loss_llt_training9, train_loss_llt9, time_llt9, \
            val_loss_llt4, val_loss_llt_training4, test_loss_llt4, test_loss_llt_training4, train_loss_llt4, time_llt4 = train_llt(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader,
                                                                                   architecture=architecture, min_values=min_values, max_values=max_values,
@@ -298,7 +299,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'time_Bw-SQ'] = time_BwSQ
 
         # Calculate losses for scalar, resp. bitwise, minmax, resp. quantile, quantization model
-        if np.isnan(row['val_loss_Bw-MQ']):
+        if np.isnan(row['val_loss_Bw-MQ'])  and not onlybwsq and not onlyllt:
             val_loss_BwMQ, val_loss_BwQQ, test_loss_BwMQ, test_loss_BwQQ, train_loss_BwMQ, train_loss_BwQQ, time_BwMQ = train_BwMQ_BwQQ(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, architecture=architecture, minmax_thresholds=minmax_thresholds, quantile_thresholds=quantile_thresholds,
                                                     num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
                                                     n_bits=n_bits, decrease_factor=decrease_factor, device=device)
@@ -429,8 +430,12 @@ if __name__ == "__main__":
 
     parser.add_argument('--onlyllt', action='store_true', help='Should be in only LLT modus?')
     parser.add_argument('--no-onlyllt', action='store_false', dest='onlyllt', help='Do not start in only LLT modus')
+
+    parser.add_argument('--onlybwsq', action='store_true', help='Should be in only Bw-SQ modus?')
+    parser.add_argument('--no-onlybwsq', action='store_false', dest='onlyllt', help='Do not start in only Bw-SQ modus')
     parser.set_defaults(debug=False)
     parser.set_defaults(onlyllt=False)
+    parser.set_defaults(onlybwsq=False)
 
 
     args = parser.parse_args()
@@ -440,12 +445,13 @@ if __name__ == "__main__":
     n_bits = args.n_bits
     debug = args.debug
     onlyllt = args.onlyllt
+    onlybwsq = args.onlybwsq
     result_folder = args.result_folder
 
     X_tensor, y_tensor = load_data(dataset, scratch, False)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    optimize_dict = {'weight_decay': [0, 0.0001, 0.001, 0.01],
+    optimize_dict = {'weight_decay': [0],
                     'learning_rate': [0.001, 0.0001],
                     'hidden_layers': [5,6,8,10],
                     # 'hidden_layers': [3,5,7],
@@ -455,7 +461,8 @@ if __name__ == "__main__":
                     # 'hidden_neurons': [2,3,4],
                     # 'num_epochs': [10],
                     'num_epochs': [30,50,70],
-                    'decrease_factor': [0.001, 0.0001]
+                    'decrease_factor': [0.001, 0.0001],
+                    'dropout_rate': [0.0, 0.2, 0.4, 0.5]
                     } ## Search Space for Hyperparameter Tuning, see Appendix F, Table 3
     if debug:
         optimize_dict['hidden_neurons'] = [5]
@@ -469,5 +476,5 @@ if __name__ == "__main__":
                                                             n_bits=n_bits,
                                                             n_steps=n_steps,
                                                             optimize_dict=optimize_dict,
-                                                            device=device, debug=debug, onlyllt=onlyllt)
+                                                            device=device, debug=debug, onlyllt=onlyllt, onlybwsq = onlybwsq)
     # print(f"Finished random search for {n_steps} steps with {n_bits} bits on dataset {dataset}")

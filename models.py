@@ -158,7 +158,7 @@ class MultiLayerPerceptron(nn.Module):
     The network consists of fully connected layers with sizes specified by n_neurons,
     with ReLU activation between layers.
     """
-    def __init__(self, n_neurons: List[int], activation = nn.ReLU) -> None:
+    def __init__(self, n_neurons: List[int], activation = nn.ReLU, dropout: float = 0.0) -> None:
         """Initialize the MLP model.
 
         Args:
@@ -172,6 +172,7 @@ class MultiLayerPerceptron(nn.Module):
             layers.append(nn.Linear(n_neurons[i], n_neurons[i+1]))
             if i < len(n_neurons)-2:  # Don't add activation after last layer
                 layers.append(activation())
+                layers.append(nn.Dropout(p=dropout))
                 
         self.network = nn.Sequential(*layers)
 
@@ -185,3 +186,4 @@ class MultiLayerPerceptron(nn.Module):
             torch.Tensor: Output tensor of shape (batch_size, n_neurons[-1])
         """
         return self.network(x)
+    
