@@ -89,7 +89,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
     start = 0
     filenames = glob.glob(f'{result_folder}/{dataset}/{dataset}_hyperparameter_tuning_{n_bits}bits_*')
     for filename in filenames:
-        storage_match = re.search(r'iterations_(\d+).csv', filename)
+        storage_match = re.search(r'(\d+)iterations.csv', filename)
         if storage_match is not None:
             if storage_match.group(1) is not None:
                 if int(storage_match.group(1)) > start:
