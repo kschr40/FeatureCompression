@@ -453,7 +453,7 @@ def train_llt(architecture, min_values, max_values, quantile_thresholds,
     model_llt9[0]._update_training(True)
     val_loss_llt_training9 = eval_val(model=model_llt9, val_loader=val_loader, criterion=criterion, device=device)
     model_llt9[0]._update_training(False)
-    val_loss_llt9 = eval_val(model=model_llt4, val_loader=val_loader, criterion=criterion, device=device)
+    val_loss_llt9 = eval_val(model=model_llt9, val_loader=val_loader, criterion=criterion, device=device)
 
     model_llt4[0]._update_training(True)
     val_loss_llt_training4 = eval_val(model=model_llt4, val_loader=val_loader, criterion=criterion, device=device)
