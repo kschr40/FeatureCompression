@@ -149,7 +149,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         # counter = 0
         # for fold, (train_idx, val_idx) in enumerate(kfold.split(X_tensor)):
             # Set a fixed random seed
-        SEED = 42 + fold + f * k_folds
+        SEED = int(42 + fold + f * k_folds)
         # Set seeds for Python, NumPy, and PyTorch
         random.seed(SEED)
         torch.manual_seed(SEED)
