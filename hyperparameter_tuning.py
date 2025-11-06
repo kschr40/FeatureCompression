@@ -96,9 +96,9 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
                     start = int(storage_match.group(1))
     if start > 0:
         previousdata = pd.read_csv(f'{result_folder}/{dataset}/{dataset}_hyperparameter_tuning_{n_bits}bits_{start}iterations.csv')
-        if len(previousdata) == start * k_folds:
-            print(f"Resuming from previous run with {start} iterations.")
-            result_df = previousdata
+        # if len(previousdata) == start * k_folds:
+        print(f"Resuming from previous run with {start} iterations.")
+        result_df = previousdata
     
     kfold = KFold(n_splits=k_folds, shuffle=True, random_state=42)
     kfold_split = kfold.split(X_tensor)
