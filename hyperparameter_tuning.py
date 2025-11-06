@@ -109,11 +109,11 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             continue  # Skip already computed rows
         weight_decay = row['weight_decay']
         learning_rate = row['learning_rate']
-        hidden_layers = row['hidden_layers'].astype(int)
-        hidden_neurons = row['hidden_neurons'].astype(int)
-        num_epochs = row['num_epochs'].astype(int)
+        hidden_layers = int(row['hidden_layers'])
+        hidden_neurons = int(row['hidden_neurons'])
+        num_epochs = int(row['num_epochs'])
         decrease_factor = row['decrease_factor']
-        fold = row['kFold_id'].astype(int)
+        fold = int(row['kFold_id'])
         
         SEED = 42 + fold + f * k_folds
         train_idx, val_idx = splits[fold]
