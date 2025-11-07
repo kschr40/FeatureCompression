@@ -114,6 +114,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         num_epochs = int(row['num_epochs'])
         decrease_factor = row['decrease_factor']
         fold = int(row['kFold_id'])
+        dropout_rate = row['dropout_rate']
         
         SEED = 42 + fold + f * k_folds
         train_idx, val_idx = splits[fold]
@@ -205,7 +206,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         if np.isnan(row['val_loss_FP']) and not onlyllt and not onlybwsq:
             val_loss_FP, val_loss_PoMQ, val_loss_PoQQ, test_loss_FP, test_loss_PoMQ, test_loss_PoQQ, train_loss_FP, time_FP = train_fp_model(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader,
                 architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
-                num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
+                num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
                 n_bits=n_bits, device=device)
             result_df.at[f, 'val_loss_FP'] = val_loss_FP
             result_df.at[f, 'val_loss_Po-MQ'] = val_loss_PoMQ
@@ -220,7 +221,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         if np.isnan(row['val_loss_Pr-MQ']) and not onlyllt and not onlybwsq:
             val_loss_PrMQ, val_loss_PrQQ, test_loss_PrMQ, test_loss_PrQQ, train_loss_PrMQ, train_loss_PrQQ, time_PrMQ = train_pre_model(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, architecture=architecture,
                                                                                                         min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
-                num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
+                num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
                 n_bits=n_bits, device=device)
             result_df.at[f, 'val_loss_Pr-MQ'] = val_loss_PrMQ
             result_df.at[f, 'val_loss_Pr-QQ'] = val_loss_PrQQ
@@ -233,7 +234,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         # Calculate losses for soft quantization model
         if np.isnan(row['val_loss_SQ']) and not onlyllt  and not onlybwsq:
             val_loss_SQ_train, val_loss_SQ_inf, test_loss_SQ_train, test_loss_SQ_inf, train_loss_SQ, time_SQ = train_SQ(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
-                num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
+                num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
                 n_bits=n_bits, decrease_factor=decrease_factor, device=device)
             result_df.at[f, 'val_loss_SQ'] = val_loss_SQ_inf
             result_df.at[f, 'val_loss_SQ_train'] = val_loss_SQ_train
@@ -245,7 +246,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         # Calculate losses for soft quantization model
         if np.isnan(row['val_loss_SQplus']) and not onlyllt  and not onlybwsq:
             val_loss_SQPlus_train, val_loss_SQPlus_inf, test_loss_SQPlus_train, test_loss_SQPlus_inf, train_loss_SQPlus, time_SQPlus = train_SQplus(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
-                num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
+                num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
                 n_bits=n_bits, decrease_factor=decrease_factor, device=device)
             result_df.at[f, 'val_loss_SQplus'] = val_loss_SQPlus_inf
             result_df.at[f, 'val_loss_SQplus_train'] = val_loss_SQPlus_train
@@ -259,7 +260,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             val_loss_LSQ, test_loss_LSQ,train_loss_LSQ, time_LSQ = train_lsq(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader,
                                                                                   architecture=architecture, min_values=min_values, max_values=max_values,
                                                                                   quantile_thresholds=quantile_thresholds,
-                                                                                  num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
+                                                                                  num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
                                                                                   n_bits=n_bits, decrease_factor=decrease_factor, device=device)
             result_df.at[f, 'val_loss_LSQ'] = val_loss_LSQ
             result_df.at[f, 'test_loss_LSQ'] = test_loss_LSQ
@@ -271,7 +272,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
            val_loss_llt4, val_loss_llt_training4, test_loss_llt4, test_loss_llt_training4, train_loss_llt4, time_llt4 = train_llt(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader,
                                                                                   architecture=architecture, min_values=min_values, max_values=max_values,
                                                                                   quantile_thresholds=quantile_thresholds,
-                                                                                  num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
+                                                                                  num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
                                                                                   n_bits=n_bits, decrease_factor=decrease_factor, device=device)
             result_df.at[f, 'val_loss_LLT9'] = val_loss_llt9
             result_df.at[f, 'val_loss_LLT9_train'] = val_loss_llt_training9
@@ -289,7 +290,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         # Calculate losses for bitwise soft quantization model
         if np.isnan(row['val_loss_Bw-SQ']):
             val_loss_BwSQ_train, val_loss_BwSQ_inf, test_loss_BwSQ_train, test_loss_BwSQ_inf, train_loss_BwSQ, time_BwSQ = train_BwSQ(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
-                num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
+                num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
                 n_bits=n_bits, decrease_factor=decrease_factor, device=device)
             result_df.at[f, 'val_loss_Bw-SQ'] = val_loss_BwSQ_inf
             result_df.at[f, 'val_loss_Bw-SQ_train'] = val_loss_BwSQ_train
@@ -301,7 +302,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         # Calculate losses for scalar, resp. bitwise, minmax, resp. quantile, quantization model
         if np.isnan(row['val_loss_Bw-MQ'])  and not onlybwsq and not onlyllt:
             val_loss_BwMQ, val_loss_BwQQ, test_loss_BwMQ, test_loss_BwQQ, train_loss_BwMQ, train_loss_BwQQ, time_BwMQ = train_BwMQ_BwQQ(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, architecture=architecture, minmax_thresholds=minmax_thresholds, quantile_thresholds=quantile_thresholds,
-                                                    num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay,
+                                                    num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
                                                     n_bits=n_bits, decrease_factor=decrease_factor, device=device)
             result_df.at[f, 'val_loss_Bw-MQ'] = val_loss_BwMQ
             result_df.at[f, 'val_loss_Bw-QQ'] = val_loss_BwQQ
