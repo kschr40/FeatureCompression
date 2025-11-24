@@ -80,6 +80,7 @@ def best_hyperparameter_testing(dataset, X_tensor, y_tensor, result_folder, devi
         random.seed(SEED)
         torch.manual_seed(SEED)
         torch.cuda.manual_seed(SEED)
+        torch.cuda.manual_seed_all(SEED)
 
         quantile_thresholds = get_quantization_thresholds(train_loader, n_bits)
         min_values, max_values = get_min_max_values(train_loader, num_features=num_features)
@@ -142,7 +143,7 @@ def best_hyperparameter_testing(dataset, X_tensor, y_tensor, result_folder, devi
                 df_test.at[n_bits, f'time_{method}'] = time_SQ
             
             # Calculate losses for soft quantization model
-            elif method == 'SQPlus':
+            elif method == 'SQplus':
                 val_loss_SQPlus_train, val_loss_SQPlus_inf, test_loss_SQPlus_train, test_loss_SQPlus_inf, train_loss_SQPlus, time_SQPlus = train_SQplus(train_loader=train_loader, val_loader=test_loader, test_loader=test_loader, architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
                     num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
                     n_bits=n_bits, decrease_factor=decrease_factor, device=device)
@@ -199,28 +200,28 @@ def best_hyperparameter_testing(dataset, X_tensor, y_tensor, result_folder, devi
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process some input arguments.")
     # Add --dataset, --type, and --train argument
-    parser.add_argument('--dataset', type=str, required=True,
-                        help='Number of iterations')
+    # parser.add_argument('--dataset', type=str, required=True,
+    #                     help='Number of iterations')
 
     parser.add_argument('--scratch', type=str, required=True,
                         help='directory to save the results to')
     parser.add_argument('--result_folder', type=str, default='results',
                         help='Folder to save results')
 
-
     args = parser.parse_args()
-    dataset = args.dataset
+    # dataset = args.dataset
     scratch = args.scratch
     result_folder = args.result_folder
 
-    X_tensor, y_tensor = load_data(dataset, scratch, False)
-
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    datasets = ['sulfur', 'cpu_act', 'california', 'fried', 'superconduct']
+    for dataset in datasets:
+        print(f"Running best hyperparameter testing on dataset {dataset} on device {device}")
+        X_tensor, y_tensor = load_data(dataset, scratch, False)
 
-    print(f"Running best hyperparameter testing on dataset {dataset} on device {device}")
-
-    results_df_all = best_hyperparameter_testing(X_tensor=X_tensor, y_tensor=y_tensor,
-                                                result_folder=result_folder,
-                                                dataset=dataset,
-                                                device=device)
-    print(f"Finished best hyperparameter testing on dataset {dataset}")
+        results_df_all = best_hyperparameter_testing(X_tensor=X_tensor, y_tensor=y_tensor,
+                                                    result_folder=result_folder,
+                                                    dataset=dataset,
+                                                    device=device)
+        print(f"Finished best hyperparameter testing on dataset {dataset}")
+        stop
