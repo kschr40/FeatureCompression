@@ -51,7 +51,7 @@ def best_hyperparameter_testing(dataset, X_tensor, y_tensor, result_folder, devi
             torch.cuda.manual_seed(SEED)
             torch.cuda.manual_seed_all(SEED)
 
-            X_cv_array, X_test_array, y_cv_array, y_test_array = train_test_split(X_tensor.numpy(), y_tensor.numpy(), test_size=0.2, random_state=SEED)
+            X_cv_array, X_test_array, y_cv_array, y_test_array = train_test_split(X_tensor.numpy(), y_tensor.numpy(), test_size=0.1, random_state=SEED)
 
             X_train_tensor = X_cv_array
             y_train_tensor = y_cv_array
