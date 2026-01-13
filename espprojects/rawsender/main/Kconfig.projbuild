@@ -1,0 +1,67 @@
+menu "TinyEnergyBenchmarkConfig"
+    if WALTER_MODEM_KCONFIG
+        config CELLULAR_APN
+            string "cellular apn"
+            default ""
+            help
+                the apn to connect to
+
+        config COAP_PROFILE
+            int "the COAP profile id"
+            default 1
+            range 1 WALTER_MODEM_MAX_HTTP_PROFILES
+
+        config TLS_PROFILE
+            int "the TLS profile id"
+            default 1
+            range 1 WALTER_MODEM_MAX_TLS_PROFILES
+        endif
+        config USE_EDRX
+            bool "Use eDRX"
+            default n
+            help
+                Enable this option to use eDRX in the example.
+        config USE_PSM
+            bool "Use PSM"
+            default n
+            help
+                Enable this option to use PSM in the example.
+
+    choice RADIO_TECHNOLOGY
+        prompt "Select the Radio Technology you want to use"
+        help
+            Select this option to choose the Radio Technology for the example.
+        
+        config RADIO_LTEM
+            bool "LTE-M"
+        
+        config RADIO_NBIOT
+            bool "NB-IoT"
+    
+    endchoice
+    
+    choice PROTOCOL
+        prompt "Select the Protocol you want to use"
+        help
+            Select this option to choose the Protocol for the example.
+
+        config PROTOCOL_MQTT
+            bool "MQTT"
+
+        config PROTOCOL_COAP
+            bool "COAP"
+
+    endchoice
+    choice MESSAGE
+        prompt "Select the Content of the Message you want to send"
+        help
+            Select the Content of the Message zou want to send.
+
+        config MESSAGE_FULLDATA
+            bool "FULLDATA"
+
+        config MESSAGE_BIT
+            bool "BIT"
+
+    endchoice
+endmenu

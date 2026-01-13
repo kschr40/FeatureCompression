@@ -1,0 +1,4 @@
+dependencies:
+  idf: ">=5.5.1"
+  dptechnics/walter-modem:
+    version: ">=1.4.3"
