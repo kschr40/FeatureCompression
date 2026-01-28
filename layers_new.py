@@ -199,7 +199,7 @@ class SoftQuantizationLayer(nn.Module):
                     x_bw = torch.round(x_bw)
                 x[:,f] = torch.sum(x_bw, dim = 1)
         else:
-            quantized_values = self.calculate_quantized_values()
+            # quantized_values = self.calculate_quantized_values()
             # Constant number of thresholds per feature
             x = torch.sigmoid((x[:,:,None]-self.thresholds[None,:]) / self.tau)
             if self.round_quantization:
