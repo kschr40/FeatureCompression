@@ -16,8 +16,9 @@ Tested Setup:
 - [HiveMQ](https://www.hivemq.com) for MQTT
 - [Power Profiler 2](https://www.nordicsemi.com/Products/Development-hardware/Power-Profiler-Kit-2)
 
-:exclamation: :exclamation: CoAP server, and account details need to be updated dependent on your setup. :exclamation: :exclamation:
-The code can not run without a microcontroller. 
+:exclamation: :exclamation: CoAP server, and account details need to be updated dependent on your setup. 
+
+:exclamation: :exclamation: The code can not run without a microcontroller. 
 
 Frist, deploy the program on the microcontroller, then connect to the Power Profiler. The energy required for data tranmission does depend on your connection and the available options.
 
