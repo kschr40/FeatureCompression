@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from layers import HardQuantizationLayer
 from typing import List
 
 class MultiLayerPerceptron(nn.Module):
