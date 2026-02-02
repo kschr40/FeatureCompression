@@ -15,8 +15,8 @@ from torch.utils.data import DataLoader, TensorDataset
 from datetime import datetime
 import numpy as np
 
-def get_results(dataset, n_bits):
-    file_path = f'results/{dataset}/{dataset}_hyperparameter_tuning_{n_bits}bits_400iterations.csv'
+def get_results(dataset, n_bits, result_folder='results'):
+    file_path = f'{result_folder}/{dataset}/{dataset}_hyperparameter_tuning_{n_bits}bits_400iterations.csv'
     df = pd.read_csv(file_path)
     return df
 
@@ -28,7 +28,7 @@ def best_hyperparameter_testing(dataset, X_tensor, y_tensor, result_folder, devi
     n_bits_min = 2
     n_bits_max = 8
 
-    results_df = get_results(dataset, n_bits = 2)
+    results_df = get_results(dataset, n_bits = 2, result_folder=result_folder)
     val_cols = [col for col in results_df.columns if 'val_loss_' in col]
     val_cols = [col for col in val_cols if not col.endswith('_train')]
     methods = [col.split('_')[2] for col in val_cols]
@@ -77,7 +77,7 @@ def best_hyperparameter_testing(dataset, X_tensor, y_tensor, result_folder, devi
             min_values, max_values = get_min_max_values(train_loader, num_features=num_features)
             minmax_thresholds = get_minmax_thresholds(min_values, max_values, n_bits)
 
-            results_df = get_results(dataset, n_bits=n_bits)
+            results_df = get_results(dataset, n_bits=n_bits, result_folder=result_folder)
             df_hyperparameter_avg = results_df.groupby('hyperparameter_setting_id').mean()
             df_val_loss = df_hyperparameter_avg[val_cols]
             best_hyperparameter_ids = df_val_loss.idxmin()
