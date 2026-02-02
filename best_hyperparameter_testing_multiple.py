@@ -127,37 +127,37 @@ def best_hyperparameter_testing(dataset, X_tensor, y_tensor, result_folder, devi
 
                 # Calculate losses for soft quantization model
                 elif method == 'SQ':
-                    val_loss_SQ_train, val_loss_SQ_inf, test_loss_SQ_train, test_loss_SQ_inf, train_loss_SQ, time_SQ = train_SQ(train_loader=train_loader, val_loader=test_loader, test_loader=test_loader, architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
-                        num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
-                        n_bits=n_bits, decrease_factor=decrease_factor, device=device)
+                    val_loss_SQ_train, val_loss_SQ_inf, test_loss_SQ_train, test_loss_SQ_inf, train_loss_SQ, time_SQ = train_SQ(train_loader=train_loader, val_loader=test_loader, test_loader=test_loader, 
+                                                                                                                                architecture=architecture, quantile_thresholds=quantile_thresholds,
+                                                                                                                                num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, 
+                                                                                                                                dropout=dropout_rate, decrease_factor=decrease_factor, device=device)
                     df_test.at[current_row, 'test_loss_SQ'] = test_loss_SQ_inf
                     df_test.at[current_row, f'time_{method}'] = time_SQ
                 
-                # Calculate losses for soft quantization model
+                # Calculate losses for soft quantization model with learnable quantized values
                 elif method == 'SQplus':
-                    val_loss_SQPlus_train, val_loss_SQPlus_inf, test_loss_SQPlus_train, test_loss_SQPlus_inf, train_loss_SQPlus, time_SQPlus = train_SQplus(train_loader=train_loader, val_loader=test_loader, test_loader=test_loader, architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
-                        num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
-                        n_bits=n_bits, decrease_factor=decrease_factor, device=device)
+                    val_loss_SQPlus_train, val_loss_SQPlus_inf, test_loss_SQPlus_train, test_loss_SQPlus_inf, train_loss_SQPlus, time_SQPlus = train_SQplus(train_loader=train_loader, val_loader=test_loader, test_loader=test_loader, 
+                                                                                                                                                            architecture=architecture, quantile_thresholds=quantile_thresholds,
+                                                                                                                                                            num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, 
+                                                                                                                                                            dropout=dropout_rate, decrease_factor=decrease_factor, device=device)
                     df_test.at[current_row, 'test_loss_SQplus'] = test_loss_SQPlus_inf
                     df_test.at[current_row, f'time_{method}'] = time_SQPlus
 
                 # Calculate losses for LSQ quantization model
                 elif method == 'LSQ':
-                    val_loss_LSQ, test_loss_LSQ,train_loss_LSQ, time_LSQ = train_lsq(train_loader=train_loader, val_loader=test_loader, test_loader=test_loader,
-                                                                                        architecture=architecture, min_values=min_values, max_values=max_values,
-                                                                                        quantile_thresholds=quantile_thresholds,
-                                                                                        num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
+                    val_loss_LSQ, test_loss_LSQ,train_loss_LSQ, time_LSQ = train_lsq(   train_loader=train_loader, val_loader=test_loader, test_loader=test_loader,
+                                                                                        architecture=architecture, num_epochs=num_epochs, learning_rate=learning_rate,
+                                                                                        weight_decay=weight_decay, dropout=dropout_rate,
                                                                                         n_bits=n_bits, decrease_factor=decrease_factor, device=device)
                     df_test.at[current_row, 'test_loss_LSQ'] = test_loss_LSQ
                     df_test.at[current_row, f'time_{method}'] = time_LSQ
 
                 elif method == 'LLT9' or method == 'LLT4':
                     val_loss_llt9, val_loss_llt_training9, test_loss_llt9, test_loss_llt_training9, train_loss_llt9, time_llt9, \
-                val_loss_llt4, val_loss_llt_training4, test_loss_llt4, test_loss_llt_training4, train_loss_llt4, time_llt4 = train_llt(train_loader=train_loader, val_loader=test_loader, test_loader=test_loader,
-                                                                                        architecture=architecture, min_values=min_values, max_values=max_values,
-                                                                                        quantile_thresholds=quantile_thresholds,
-                                                                                        num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
-                                                                                        n_bits=n_bits, decrease_factor=decrease_factor, device=device)
+                val_loss_llt4, val_loss_llt_training4, test_loss_llt4, test_loss_llt_training4, train_loss_llt4, time_llt4 = train_llt( train_loader=train_loader, val_loader=test_loader, test_loader=test_loader,
+                                                                                                                                        architecture=architecture, quantile_thresholds=quantile_thresholds,
+                                                                                                                                        num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
+                                                                                                                                        n_bits=n_bits, decrease_factor=decrease_factor, device=device)
                     if method == 'LLT9':
                         df_test.at[current_row, 'test_loss_LLT9'] = test_loss_llt9
                         df_test.at[current_row, f'time_{method}'] = time_llt9
@@ -167,18 +167,20 @@ def best_hyperparameter_testing(dataset, X_tensor, y_tensor, result_folder, devi
 
                 # Calculate losses for bitwise soft quantization model
                 elif method == 'Bw-SQ':
-                    val_loss_BwSQ_train, val_loss_BwSQ_inf, test_loss_BwSQ_train, test_loss_BwSQ_inf, train_loss_BwSQ, time_BwSQ = train_BwSQ(train_loader=train_loader, val_loader=test_loader, test_loader=test_loader, architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
-                        num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
-                        n_bits=n_bits, decrease_factor=decrease_factor, device=device)
+                    val_loss_BwSQ_train, val_loss_BwSQ_inf, test_loss_BwSQ_train, test_loss_BwSQ_inf, train_loss_BwSQ, time_BwSQ = train_BwSQ(train_loader=train_loader, val_loader=test_loader, test_loader=test_loader, 
+                                                                                                                                              architecture=architecture, quantile_thresholds=quantile_thresholds,
+                                                                                                                                              num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, 
+                                                                                                                                              dropout=dropout_rate, decrease_factor=decrease_factor, device=device)
                     df_test.at[current_row, 'test_loss_Bw-SQ'] = test_loss_BwSQ_inf
                     df_test.at[current_row, f'time_{method}'] = time_BwSQ
 
 
                 # Calculate losses for scalar, resp. bitwise, minmax, resp. quantile, quantization model
                 elif method in ['Bw-MQ', 'Bw-QQ']:
-                    val_loss_BwMQ, val_loss_BwQQ, test_loss_BwMQ, test_loss_BwQQ, train_loss_BwMQ, train_loss_BwQQ, time_BwMQ = train_BwMQ_BwQQ(train_loader=train_loader, val_loader=test_loader, test_loader=test_loader, architecture=architecture, minmax_thresholds=minmax_thresholds, quantile_thresholds=quantile_thresholds,
-                                                            num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
-                                                            n_bits=n_bits, decrease_factor=decrease_factor, device=device)
+                    val_loss_BwMQ, val_loss_BwQQ, test_loss_BwMQ, test_loss_BwQQ, train_loss_BwMQ, train_loss_BwQQ, time_BwMQ = train_BwMQ_BwQQ(train_loader=train_loader, val_loader=test_loader, test_loader=test_loader, 
+                                                                                                                                                architecture=architecture, minmax_thresholds=minmax_thresholds, quantile_thresholds=quantile_thresholds,
+                                                                                                                                                num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, 
+                                                                                                                                                dropout=dropout_rate, decrease_factor=decrease_factor, device=device)
                     if method == 'Bw-MQ':
                         df_test.at[current_row, 'test_loss_Bw-MQ'] = test_loss_BwMQ
                         df_test.at[current_row, f'time_{method}'] = time_BwMQ

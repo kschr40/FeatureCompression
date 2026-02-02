@@ -27,9 +27,9 @@ def create_random_search_df(optimize_dict, k_folds, n_steps, n_bits):
         hyperparameter_df[key] = np.repeat(sampled, k_folds).tolist()
     return hyperparameter_df
 
-def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_folder, dataset,
-                                              k_folds = 4, n_steps = 10, n_bits =8, optimize_dict = {}, device = 'cpu', debug=False, 
-                                              onlyllt=False, onlybwsq = False):
+def random_search_cv(   X_tensor : torch.tensor, y_tensor : torch.tensor, result_folder, dataset,
+                        k_folds = 4, n_steps = 10, n_bits =8, 
+                        optimize_dict = {}, device = 'cpu', debug=False):
     if debug:
         k_folds = 2
     num_features = X_tensor.shape[1]
@@ -45,37 +45,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
     times = ['time_' + method for method in methods if ('Po' not in method and 'QQ' not in method)]
     result_df = pd.DataFrame(columns = val_losses + test_losses + train_losses + times, index = range(n_steps * k_folds))
     result_df = pd.concat([hyperparameter_df, result_df], axis=1)
-    # Define default hyperparameters
-    # weight_decay =  0
-    # learning_rate = 0.001
-    # hidden_layers = 2
-    # hidden_neurons = 256
-    # num_epochs = 30
-    # add_noise = False
-    # decrease_factor = 0.001
 
-    # Lists to store results
-    val_loss_FP_values = []
-    val_loss_PoMQ_values = []
-    val_loss_PoQQ_values = []
-    val_loss_hard_pre_mlp_values = []
-    val_loss_hard_thr_pre_mlp_values = []
-    val_loss_soft_mlp_values = []
-    val_loss_soft_hard_mlp_values = []
-    val_loss_soft_comp_mlp_values = []
-    val_loss_soft_hard_comp_mlp_values = []
-    val_loss_hard_bitwise_minmax_mlp_values = []
-    val_loss_hard_bitwise_quantile_mlp_values = []
-
-    train_loss_FP_values = []
-    train_loss_hard_pre_mlp_values = []
-    train_loss_hard_thr_pre_mlp_values = []
-    train_loss_soft_mlp_values = []
-    train_loss_soft_comp_mlp_values = []
-    train_loss_hard_bitwise_minmax_mlp_values = []
-    train_loss_hard_bitwise_quantile_mlp_values = []
-    kFold_id = []
-    hyperparameter_setting_id = []
     hyperparameter_dict = {
         'weight_decay': [],
         'learning_rate': [],
@@ -84,7 +54,6 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         'num_epochs': [],
         'decrease_factor': []}
 
-    # results_df = pd.DataFrame()
     # Perform random search
     random.seed(datetime.now().timestamp())
     start = 0
@@ -116,50 +85,15 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         fold = int(row['kFold_id'])
         dropout_rate = row['dropout_rate']
         
-        SEED = 42 + fold + f * k_folds
         train_idx, val_idx = splits[fold]
 
-
-
-
-
-
-    # for f in tqdm(range(start, n_steps)):
-    #     for key, value in optimize_dict.items():
-    #         if key == 'weight_decay':
-    #             weight_decay = random.choice(value)
-    #         elif key == 'learning_rate':
-    #             learning_rate = random.choice(value)
-    #         elif key == 'hidden_layers':
-    #             hidden_layers = random.choice(value)
-    #         elif key == 'hidden_neurons':
-    #             hidden_neurons = random.choice(value)
-    #             if debug:
-    #                 hidden_neurons = 10
-    #         elif key == 'num_epochs':
-    #             num_epochs = random.choice(value)    
-    #         elif key == 'add_noise':
-    #             add_noise = random.choice(value)    
-    #         elif key == 'decrease_factor':
-    #             decrease_factor = random.choice(value)
-    #         else:
-    #             raise ValueError(f"Unknown hyperparameter: {key}")
-
-        # k_folds = 10
-        # if debug:
-        #     k_folds = 2
-        # counter = 0
-        # for fold, (train_idx, val_idx) in enumerate(kfold.split(X_tensor)):
-            # Set a fixed random seed
+        # Set a fixed random seed
         SEED = int(42 + fold + f * k_folds)
         # Set seeds for Python, NumPy, and PyTorch
         random.seed(SEED)
         torch.manual_seed(SEED)
         torch.cuda.manual_seed(SEED)
 
-        # hyperparameter_setting_id.append(f)
-        # kFold_id.append(counter)
-        # counter += 1
         # Preprocess data
         X_train_tensor = X_cv_array[train_idx]
         y_train_tensor = y_cv_array[train_idx]
@@ -203,7 +137,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
         hyperparameter_dict['decrease_factor'].append(decrease_factor)
 
         # Calculate losses for FP and Post-quantization models
-        if np.isnan(row['val_loss_FP']) and not onlyllt and not onlybwsq:
+        if np.isnan(row['val_loss_FP']):
             val_loss_FP, val_loss_PoMQ, val_loss_PoQQ, test_loss_FP, test_loss_PoMQ, test_loss_PoQQ, train_loss_FP, time_FP = train_fp_model(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader,
                 architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
@@ -218,7 +152,7 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'time_FP'] = time_FP
         
         # Calculate losses for pre-training quantization model
-        if np.isnan(row['val_loss_Pr-MQ']) and not onlyllt and not onlybwsq:
+        if np.isnan(row['val_loss_Pr-MQ']):
             val_loss_PrMQ, val_loss_PrQQ, test_loss_PrMQ, test_loss_PrQQ, train_loss_PrMQ, train_loss_PrQQ, time_PrMQ = train_pre_model(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, architecture=architecture,
                                                                                                         min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
                 num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
@@ -232,10 +166,11 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'time_Pr-MQ'] = time_PrMQ
 
         # Calculate losses for soft quantization model
-        if np.isnan(row['val_loss_SQ']) and not onlyllt  and not onlybwsq:
-            val_loss_SQ_train, val_loss_SQ_inf, test_loss_SQ_train, test_loss_SQ_inf, train_loss_SQ, time_SQ = train_SQ(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
-                num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
-                n_bits=n_bits, decrease_factor=decrease_factor, device=device)
+        if np.isnan(row['val_loss_SQ']):
+            val_loss_SQ_train, val_loss_SQ_inf, test_loss_SQ_train,test_loss_SQ_inf, train_loss_SQ, time_SQ = train_SQ(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, 
+                                                                                                                       architecture=architecture, quantile_thresholds=quantile_thresholds,
+                                                                                                                       num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, 
+                                                                                                                       dropout=dropout_rate, decrease_factor=decrease_factor, device=device)
             result_df.at[f, 'val_loss_SQ'] = val_loss_SQ_inf
             result_df.at[f, 'val_loss_SQ_train'] = val_loss_SQ_train
             result_df.at[f, 'test_loss_SQ'] = test_loss_SQ_inf
@@ -243,11 +178,12 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'train_loss_SQ'] = train_loss_SQ
             result_df.at[f, 'time_SQ'] = time_SQ
         
-        # Calculate losses for soft quantization model
-        if np.isnan(row['val_loss_SQplus']) and not onlyllt  and not onlybwsq:
-            val_loss_SQPlus_train, val_loss_SQPlus_inf, test_loss_SQPlus_train, test_loss_SQPlus_inf, train_loss_SQPlus, time_SQPlus = train_SQplus(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
-                num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
-                n_bits=n_bits, decrease_factor=decrease_factor, device=device)
+        # Calculate losses for soft quantization model with learnable quantized values
+        if np.isnan(row['val_loss_SQplus']):
+            val_loss_SQPlus_train, val_loss_SQPlus_inf, test_loss_SQPlus_train, test_loss_SQPlus_inf, train_loss_SQPlus, time_SQPlus = train_SQplus(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, 
+                                                                                                                                                    architecture=architecture, quantile_thresholds=quantile_thresholds,
+                                                                                                                                                    num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, 
+                                                                                                                                                    dropout=dropout_rate, decrease_factor=decrease_factor, device=device)
             result_df.at[f, 'val_loss_SQplus'] = val_loss_SQPlus_inf
             result_df.at[f, 'val_loss_SQplus_train'] = val_loss_SQPlus_train
             result_df.at[f, 'test_loss_SQplus'] = test_loss_SQPlus_inf
@@ -256,24 +192,23 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'time_SQplus'] = time_SQPlus
 
         # Calculate losses for LSQ quantization model
-        if np.isnan(row['val_loss_LSQ']) and not onlyllt  and not onlybwsq:
-            val_loss_LSQ, test_loss_LSQ,train_loss_LSQ, time_LSQ = train_lsq(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader,
-                                                                                  architecture=architecture, min_values=min_values, max_values=max_values,
-                                                                                  quantile_thresholds=quantile_thresholds,
-                                                                                  num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
-                                                                                  n_bits=n_bits, decrease_factor=decrease_factor, device=device)
+        if np.isnan(row['val_loss_LSQ']):
+            val_loss_LSQ, test_loss_LSQ,train_loss_LSQ, time_LSQ = train_lsq(   train_loader=train_loader, val_loader=val_loader, test_loader=test_loader,
+                                                                                architecture=architecture, num_epochs=num_epochs, learning_rate=learning_rate,
+                                                                                weight_decay=weight_decay, dropout=dropout_rate,
+                                                                                n_bits=n_bits, decrease_factor=decrease_factor, device=device)
             result_df.at[f, 'val_loss_LSQ'] = val_loss_LSQ
             result_df.at[f, 'test_loss_LSQ'] = test_loss_LSQ
             result_df.at[f, 'train_loss_LSQ'] = train_loss_LSQ
             result_df.at[f, 'time_LSQ'] = time_LSQ
             
-        if np.isnan(row['val_loss_LLT9'])  and not onlybwsq:
+        # Calculate losses for LLT quantization model    
+        if np.isnan(row['val_loss_LLT9']):
             val_loss_llt9, val_loss_llt_training9, test_loss_llt9, test_loss_llt_training9, train_loss_llt9, time_llt9, \
-           val_loss_llt4, val_loss_llt_training4, test_loss_llt4, test_loss_llt_training4, train_loss_llt4, time_llt4 = train_llt(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader,
-                                                                                  architecture=architecture, min_values=min_values, max_values=max_values,
-                                                                                  quantile_thresholds=quantile_thresholds,
-                                                                                  num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
-                                                                                  n_bits=n_bits, decrease_factor=decrease_factor, device=device)
+           val_loss_llt4, val_loss_llt_training4, test_loss_llt4, test_loss_llt_training4, train_loss_llt4, time_llt4 = train_llt(  train_loader=train_loader, val_loader=val_loader, test_loader=test_loader,
+                                                                                                                                    architecture=architecture, quantile_thresholds=quantile_thresholds,
+                                                                                                                                    num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
+                                                                                                                                    n_bits=n_bits, decrease_factor=decrease_factor, device=device)
             result_df.at[f, 'val_loss_LLT9'] = val_loss_llt9
             result_df.at[f, 'val_loss_LLT9_train'] = val_loss_llt_training9
             result_df.at[f, 'test_loss_LLT9'] = test_loss_llt9
@@ -289,9 +224,10 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
 
         # Calculate losses for bitwise soft quantization model
         if np.isnan(row['val_loss_Bw-SQ']):
-            val_loss_BwSQ_train, val_loss_BwSQ_inf, test_loss_BwSQ_train, test_loss_BwSQ_inf, train_loss_BwSQ, time_BwSQ = train_BwSQ(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, architecture=architecture, min_values=min_values, max_values=max_values, quantile_thresholds=quantile_thresholds,
-                num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
-                n_bits=n_bits, decrease_factor=decrease_factor, device=device)
+            val_loss_BwSQ_train, val_loss_BwSQ_inf, test_loss_BwSQ_train, test_loss_BwSQ_inf, train_loss_BwSQ, time_BwSQ =  train_BwSQ( train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, 
+                                                                                                                                        architecture=architecture, quantile_thresholds=quantile_thresholds,
+                                                                                                                                        num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, 
+                                                                                                                                        dropout=dropout_rate, decrease_factor=decrease_factor, device=device)
             result_df.at[f, 'val_loss_Bw-SQ'] = val_loss_BwSQ_inf
             result_df.at[f, 'val_loss_Bw-SQ_train'] = val_loss_BwSQ_train
             result_df.at[f, 'test_loss_Bw-SQ'] = test_loss_BwSQ_inf
@@ -299,11 +235,12 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'train_loss_Bw-SQ'] = train_loss_BwSQ
             result_df.at[f, 'time_Bw-SQ'] = time_BwSQ
 
-        # Calculate losses for scalar, resp. bitwise, minmax, resp. quantile, quantization model
-        if np.isnan(row['val_loss_Bw-MQ'])  and not onlybwsq and not onlyllt:
-            val_loss_BwMQ, val_loss_BwQQ, test_loss_BwMQ, test_loss_BwQQ, train_loss_BwMQ, train_loss_BwQQ, time_BwMQ = train_BwMQ_BwQQ(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, architecture=architecture, minmax_thresholds=minmax_thresholds, quantile_thresholds=quantile_thresholds,
-                                                    num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, dropout=dropout_rate,
-                                                    n_bits=n_bits, decrease_factor=decrease_factor, device=device)
+        # Calculate losses for bitwise minmax, resp. quantile, quantization model
+        if np.isnan(row['val_loss_Bw-MQ']):
+            val_loss_BwMQ, val_loss_BwQQ, test_loss_BwMQ, test_loss_BwQQ, train_loss_BwMQ, train_loss_BwQQ, time_BwMQ = train_BwMQ_BwQQ(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, 
+                                                                                                                                        architecture=architecture, minmax_thresholds=minmax_thresholds, quantile_thresholds=quantile_thresholds,
+                                                                                                                                        num_epochs=num_epochs, learning_rate=learning_rate, weight_decay=weight_decay, 
+                                                                                                                                        dropout=dropout_rate, decrease_factor=decrease_factor, device=device)
             result_df.at[f, 'val_loss_Bw-MQ'] = val_loss_BwMQ
             result_df.at[f, 'val_loss_Bw-QQ'] = val_loss_BwQQ
             result_df.at[f, 'test_loss_Bw-MQ'] = test_loss_BwMQ
@@ -312,99 +249,6 @@ def random_search_cv(X_tensor : torch.tensor, y_tensor : torch.tensor, result_fo
             result_df.at[f, 'train_loss_Bw-QQ'] = train_loss_BwQQ
             result_df.at[f, 'time_Bw-MQ'] = time_BwMQ
         
-        # result_df.at[f, 'val_loss_FP'] = val_loss_FP
-        # result_df.at[f, 'val_loss_Po-MQ'] = val_loss_PoMQ
-        # result_df.at[f, 'val_loss_Po-QQ'] = val_loss_PoQQ
-        # result_df.at[f, 'val_loss_Pr-MQ'] = val_loss_PrMQ
-        # result_df.at[f, 'val_loss_Pr-QQ'] = val_loss_PrQQ
-        # result_df.at[f, 'val_loss_SQ'] = val_loss_SQ_inf
-        # result_df.at[f, 'val_loss_SQplus'] = val_loss_SQPlus_inf
-        # result_df.at[f, 'val_loss_Bw-SQ'] = val_loss_BwSQ_inf
-        # result_df.at[f, 'val_loss_Bw-MQ'] = val_loss_BwMQ
-        # result_df.at[f, 'val_loss_Bw-QQ'] = val_loss_BwQQ
-
-        # result_df.at[f, 'val_loss_SQplus_train'] = val_loss_SQPlus_train
-        # result_df.at[f, 'val_loss_SQ_train'] = val_loss_SQ_train
-        # result_df.at[f, 'val_loss_Bw-SQ_train'] = val_loss_BwSQ_train
-
-        # result_df.at[f, 'train_loss_FP'] = train_loss_FP
-        # result_df.at[f, 'train_loss_Pr-MQ'] = train_loss_PrMQ
-        # result_df.at[f, 'train_loss_Pr-QQ'] = train_loss_PrQQ
-        # result_df.at[f, 'train_loss_SQ'] = train_loss_SQ
-        # result_df.at[f, 'train_loss_SQplus'] = train_loss_SQPlus
-        # result_df.at[f, 'train_loss_Bw-SQ'] = train_loss_BwSQ
-        # result_df.at[f, 'train_loss_Bw-MQ'] = train_loss_BwMQ
-        # result_df.at[f, 'train_loss_Bw-QQ'] = train_loss_BwQQ
-
-        # result_df.at[f, 'time_FP'] = time_FP
-        # result_df.at[f, 'time_Pr-MQ'] = time_PrMQ
-        # result_df.at[f, 'time_Pr-QQ'] = time_PrMQ
-        # result_df.at[f, 'time_SQ'] = time_SQ
-        # result_df.at[f, 'time_SQplus'] = time_SQPlus
-        # result_df.at[f, 'time_Bw-SQ'] = time_BwSQ
-        # result_df.at[f, 'time_Bw-MQ'] = time_BwMQ
-        
-
-        # val_loss_FP_values.append(val_loss_FP)
-        # val_loss_PoMQ_values.append(val_loss_PoMQ)
-        # val_loss_PoQQ_values.append(val_loss_PoQQ)
-
-        
-        # val_loss_hard_pre_mlp_values.append(val_loss_hard_pre_mlp)
-        # val_loss_hard_thr_pre_mlp_values.append(val_loss_hard_thr_pre_mlp)
-        # val_loss_soft_mlp_values.append(val_loss_soft_mlp)
-        # val_loss_soft_hard_mlp_values.append(val_loss_soft_hard_mlp)
-        # val_loss_soft_comp_mlp_values.append(val_loss_soft_comp_mlp)
-        # val_loss_soft_hard_comp_mlp_values.append(val_loss_soft_hard_comp_mlp)
-        # val_loss_hard_bitwise_minmax_mlp_values.append(val_loss_hard_bitwise_minmax_mlp)
-        # val_loss_hard_bitwise_quantile_mlp_values.append(val_loss_hard_bitwise_quantile_mlp)
-        
-
-
-        # train_loss_FP_values.append(train_loss_FP)
-        
-        # train_loss_hard_pre_mlp_values.append(train_loss_hard_thr_pre_mlp_mm)
-        # train_loss_hard_thr_pre_mlp_values.append(train_loss_hard_thr_pre_mlp_q)
-        # train_loss_soft_mlp_values.append(train_loss_soft)
-        # train_loss_soft_comp_mlp_values.append(train_loss_soft_hard_comp)
-        # train_loss_hard_bitwise_minmax_mlp_values.append(train_loss_hard_bitwise_mm)
-        # train_loss_hard_bitwise_quantile_mlp_values.append(train_loss_hard_bitwise_q)
-        
-        # losses_df = pd.DataFrame({
-        #     'hyperparameter_setting_id' : hyperparameter_setting_id,
-        #     'kFold_id': kFold_id,
-        #     'val_loss_FP': val_loss_FP_values,
-        #     'val_loss_Po-MQ': val_loss_PoMQ_values,
-        #     'val_loss_Po-QQ': val_loss_PoQQ_values,
-        #     'val_loss_hard_pre_mlp': val_loss_hard_pre_mlp_values,
-        #     'val_loss_hard_thr_pre_mlp': val_loss_hard_thr_pre_mlp_values,
-        #     'val_loss_soft_mlp': val_loss_soft_mlp_values,
-        #     'val_loss_soft_hard_mlp': val_loss_soft_hard_mlp_values,
-        #     'val_loss_soft_comp_mlp': val_loss_soft_comp_mlp_values,
-        #     'val_loss_soft_hard_comp_mlp': val_loss_soft_hard_comp_mlp_values,
-        #     'val_loss_hard_bitwise_minmax_mlp': val_loss_hard_bitwise_minmax_mlp_values,
-        #     'val_loss_hard_bitwise_quantile_mlp': val_loss_hard_bitwise_quantile_mlp_values,
-        #     'train_loss_FP': train_loss_FP_values,
-        #     'train_loss_hard_pre_mlp': train_loss_hard_pre_mlp_values,
-        #     'train_loss_hard_thr_pre_mlp': train_loss_hard_thr_pre_mlp_values,
-        #     'train_loss_soft_mlp': train_loss_soft_mlp_values,
-        #     'train_loss_soft_comp_mlp': train_loss_soft_comp_mlp_values,
-        #     'train_loss_hard_bitwise_minmax_mlp': train_loss_hard_bitwise_minmax_mlp_values,
-        #     'train_loss_hard_bitwise_quantile_mlp': train_loss_hard_bitwise_quantile_mlp_values
-        # })
-        
-
-        
-        # Create DataFrame with results
-        # if results_df is None:
-        #     results_df = pd.DataFrame(hyperparameter_dict)
-        #     results_df = pd.concat([results_df, losses_df], axis=1)
-        # else:
-        #     tmp = pd.DataFrame(hyperparameter_dict)
-        #     tmp = pd.concat([tmp, losses_df], axis=1)
-        #     results_df = pd.concat([results_df, tmp], ignore_index=True, axis=0)
-        # results_df.drop_duplicates(inplace=True)
-        # results_df = results_df.sort_values(['hyperparameter_setting_id', 'val_loss_FP'])  # Sort by loss ascending
         folder = Path(f'{result_folder}/{dataset}')
         folder.mkdir(parents=True, exist_ok=True)
         result_df.to_csv(f'{result_folder}/{dataset}/{dataset}_hyperparameter_tuning_{n_bits}bits_{f+1}iterations.csv', index=False)
@@ -428,15 +272,7 @@ if __name__ == "__main__":
                         help='Folder to save results')
     parser.add_argument('--debug', action='store_true', help='Should be in debug modus?')
     parser.add_argument('--no-debug', action='store_false', dest='debug', help='Do not start in debug modus')
-
-    parser.add_argument('--onlyllt', action='store_true', help='Should be in only LLT modus?')
-    parser.add_argument('--no-onlyllt', action='store_false', dest='onlyllt', help='Do not start in only LLT modus')
-
-    parser.add_argument('--onlybwsq', action='store_true', help='Should be in only Bw-SQ modus?')
-    parser.add_argument('--no-onlybwsq', action='store_false', dest='onlyllt', help='Do not start in only Bw-SQ modus')
     parser.set_defaults(debug=False)
-    parser.set_defaults(onlyllt=False)
-    parser.set_defaults(onlybwsq=False)
 
 
     args = parser.parse_args()
@@ -445,8 +281,6 @@ if __name__ == "__main__":
     n_steps = args.n_steps
     n_bits = args.n_bits
     debug = args.debug
-    onlyllt = args.onlyllt
-    onlybwsq = args.onlybwsq
     result_folder = args.result_folder
 
     X_tensor, y_tensor = load_data(dataset, scratch, False)
@@ -455,12 +289,7 @@ if __name__ == "__main__":
     optimize_dict = {'weight_decay': [0],
                     'learning_rate': [0.001, 0.0001],
                     'hidden_layers': [5,6,8,10],
-                    # 'hidden_layers': [3,5,7],
-                    # 'hidden_layers': [1,2],
                     'hidden_neurons': [32,64,128,256,512,1024, 2048, 4096, 8192],
-                    # 'hidden_neurons': [32,64,128,256,512],
-                    # 'hidden_neurons': [2,3,4],
-                    # 'num_epochs': [10],
                     'num_epochs': [30,50,70],
                     'decrease_factor': [0.001, 0.0001],
                     'dropout_rate': [0.0, 0.2, 0.4, 0.5]
@@ -472,10 +301,10 @@ if __name__ == "__main__":
     # print(f"Running random search for {n_steps} steps with {n_bits} bits on dataset {dataset} on device {device}")
 
     results_df_all = random_search_cv(X_tensor=X_tensor, y_tensor=y_tensor,
-                                                            result_folder=result_folder,
-                                                            dataset=dataset,
-                                                            n_bits=n_bits,
-                                                            n_steps=n_steps,
-                                                            optimize_dict=optimize_dict,
-                                                            device=device, debug=debug, onlyllt=onlyllt, onlybwsq = onlybwsq)
+                                        result_folder=result_folder,
+                                        dataset=dataset,
+                                        n_bits=n_bits,
+                                        n_steps=n_steps,
+                                        optimize_dict=optimize_dict,
+                                        device=device, debug=debug)
     # print(f"Finished random search for {n_steps} steps with {n_bits} bits on dataset {dataset}")
