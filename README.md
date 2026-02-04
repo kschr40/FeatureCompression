@@ -1,6 +1,6 @@
 # Trainable Bitwise Soft Quantization for Input Feature Compression
 
-[Karsten Schrödter](https://www.wi.uni-muenster.de/de/institut/dasc/personen/karsten-schroedter), [Jan Stenkamp](https://www.wi.uni-muenster.de/de/institut/dasc/personen/jan-stenkamp), [Nina Herrmann](https://www.wi.uni-muenster.de/de/institut/dasc/personen/nina-herrmann), [Fabian Gieseke](https://www.wi.uni-muenster.de/department/dasc/people/fabian-gieseke) 
+[Karsten Schrödter](https://mlde-lab.github.io/team/karsten-schroedter/), [Jan Stenkamp](https://www.wi.uni-muenster.de/de/institut/dasc/personen/jan-stenkamp), [Nina Herrmann](https://mlde-lab.github.io/team/nina-herrmann/), [Fabian Gieseke](https://mlde-lab.github.io/team/fabian-gieseke/) 
 
 ![Bitwise Soft-Quantization](result_analysis/figures/soft_stepwise_sketch.png)
 
