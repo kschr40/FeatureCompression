@@ -353,6 +353,7 @@ class ThresholdDecodingLayer(nn.Module):
         return out
     
 class quant_lookup(nn.Module):
+    ''' Class to implement Learnable Lookup Table Quantization. Source: https://github.com/SYSU-SAIL/LLT/blob/main/SR/model/quant_layer.py '''
     def __init__(self, granu, n_bits, is_act=True):
         super(quant_lookup, self).__init__()
         self.n_bits = n_bits
@@ -471,6 +472,7 @@ class quant_lookup(nn.Module):
         return x_q
 
 class quant_lookup_layer(nn.Module):
+    ''' Class to perform Learnable Lookup Table Quantization for multiple features in parallel. Each feature has its own lookup table, but the same tau is used for all tables. Class is self-build on top of quant_lookup class above.'''
     def __init__(self, granu, n_bits, n_features, tau = 1.0):
         super(quant_lookup_layer, self).__init__()
         # weights are clipped to [-1,1] activation [0,1] - we assume weights to keep negative values...
@@ -505,6 +507,7 @@ class quant_lookup_layer(nn.Module):
     
 import torch as t
 class Quantizer(t.nn.Module):
+    ''' Class to implement a basic Quantizer, aimed for Learned Step Size Quantization. Source: https://github.com/zhutmost/lsq-net/blob/master/quan/quantizer/quantizer.py'''
     def __init__(self, bit):
         super().__init__()
 
@@ -527,6 +530,7 @@ def round_pass(x):
 
 
 class LsqQuan(Quantizer):
+    ''' Class to implement Learned Step Size Quantization. Source: https://github.com/zhutmost/lsq-net/blob/master/quan/quantizer/lsq.py'''
     def __init__(self, bit, all_positive=False, symmetric=False, per_channel=True):
         super().__init__(bit)
 
@@ -570,6 +574,7 @@ class LsqQuan(Quantizer):
     
 
 class LsqQuanTranspose(Quantizer):
+    ''' Class to make Learned Step Size Quantization work in our context. Self-build on top of LsqQuan class above.'''
     def __init__(self, bit, all_positive=False, symmetric=False, per_channel=True):
         super().__init__(bit)
         self.lsq_quan = LsqQuan(bit, all_positive, symmetric, per_channel)
