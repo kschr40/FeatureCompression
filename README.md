@@ -2,6 +2,9 @@
 
 [Karsten Schrödter](https://mlde-lab.github.io/team/karsten-schroedter/), [Jan Stenkamp](https://www.wi.uni-muenster.de/de/institut/dasc/personen/jan-stenkamp), [Nina Herrmann](https://mlde-lab.github.io/team/nina-herrmann/), [Fabian Gieseke](https://mlde-lab.github.io/team/fabian-gieseke/) 
 
+[[`Paper`](https://arxiv.org/abs/2603.05172)] [[`BibTeX`](#citing-the-paper)]
+
+
 ![Bitwise Soft-Quantization](result_analysis/figures/soft_stepwise_sketch.png)
 
 This is the official repository for the Paper **Trainable Bitwise Soft Quantization for Input Feature Compression**, to be published at the *Third Conference on Parsimony and Learning (CPAL) 2026*. The repository contains the code for our work on trainable feature quantization for edge–cloud neural networks. We propose a differentiable quantization layer that compresses input features on-device using learnable thresholds and user-defined bit widths. The method reduces communication costs while preserving accuracy and consistently outperforms standard quantization baselines across multiple datasets.
@@ -62,7 +65,7 @@ done
 
 This work was funded by the German Federal Ministry for the Environment, Nature Conservation, Nuclear Safety and Consumer protection, Project **TinyAIoT**, Funding Nr. 67KI32002A. 
 
-<!-- ## Citing the paper
+## Citing the paper
 
 Please cite using the following BibTex:
 
@@ -75,4 +78,4 @@ booktitle={The Third Conference on Parsimony and Learning (Proceedings Track)},
 year={2026},
 url={https://openreview.net/forum?id=AhrDRUlzeD}
 }
-``` -->
+``` 
